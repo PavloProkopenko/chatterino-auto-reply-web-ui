@@ -1,6 +1,6 @@
 # Auto Reply Web
 
-A local web UI for the **Auto Reply** plugin for Leafyrino (a Chatterino fork). It edits the plugin's `data/config.json`; the plugin keeps working without this app. UI language: Russian. Status: Phase 0 (environment); no product code yet. See `PLAN.md`, `docs/CONTRACT.md` and `docs/adr/`.
+A local web UI for the **Auto Reply** plugin for Leafyrino (a Chatterino fork). It edits the plugin's `data/config.json`; the plugin keeps working without this app. UI language: Russian. Status: Phase 1 (core server and library) done, no UI yet. See `PLAN.md`, `docs/CONTRACT.md` and `docs/adr/`.
 
 ## Develop
 
@@ -19,7 +19,7 @@ Afterwards (the script prints the exact line):
 
 ```sh
 export PATH="$PWD/.tools/node/bin:$PWD/.tools/pnpm/node_modules/.bin:$PATH"
-pnpm lint && pnpm test && pnpm sync-plugin:check && pnpm build:smoke
+pnpm lint && pnpm typecheck && pnpm test && pnpm sync-plugin:check && pnpm build:smoke
 ```
 
 `pnpm sync-plugin` copies the plugin's Lua modules from `../auto-reply-plugin` (or `$PLUGIN_REPO`) into `vendor/plugin/` and records hashes; the plugin repo is only read.

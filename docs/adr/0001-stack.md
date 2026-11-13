@@ -8,7 +8,7 @@ Auto Reply Web is a local app: a small server on 127.0.0.1 plus a browser UI tha
 
 Spikes are in `spikes/` (throw-away, not product code). Machine: macOS arm64 dev Mac, Node 22.17, Lua 5.5.1 CLI. Anything not run on Windows or in a real browser is marked **UNVERIFIED**.
 
-## Spike A: Lua in the browser (`spikes/lua-wasm`) - PASS
+## Spike A: Lua in the browser (`spikes/lua-wasm`; its code now lives in `src/lua/`) - PASS
 `wasmoon` 1.16.0 (Lua 5.4 in WASM) loads the vendored `util.lua` and `rules.lua` with a small `c2` shim (`shim.lua`).
 - The 25 cases of the plugin's `tests/cases/unit_rules.lua` (read through `PLUGIN_REPO`, not copied): 25/25 match the expected table, and the output is identical to the system `lua` (5.5.1) run. Cyrillic case folding, word edges (`играет2`, `играет-то`) and the invisible anti-duplicate suffix pass.
 - Speed: engine creation 13 ms, running all 25 cases 1.9 ms.
@@ -17,7 +17,7 @@ Spikes are in `spikes/` (throw-away, not product code). Machine: macOS arm64 dev
 - UNVERIFIED: the same worker-timeout behaviour in a real browser `Worker` (tested with Node `worker_threads`); `names.lua` and `config.lua` sanitiser (only `util` + `rules` were loaded, the rest comes with the contract tests in Phase 1).
 - `fengari` fallback not needed.
 
-## Spike B: server + single executable (`spikes/server`; the Node SEA build config was removed after the decision)
+## Spike B: server + single executable (the spike code was replaced by the real server in Phase 1; Node SEA config removed)
 A server with Host check, per-session token, CSP header and atomic write (temp file + rename). The same smoke test (page, bad Host -> 421, no token -> 403, ping, write + read back with Cyrillic content) passes on every runnable binary.
 
 | | Bun 1.4.4 `build --compile` | Node SEA (22.17, esbuild + postject) |
@@ -61,3 +61,10 @@ Spike-only dependencies (`wasmoon`, `svelte`, `svelte-dnd-action`, `vite`) live 
 ## Consequences
 - Phase 1 starts with the contract tests for `names.lua` and the `config.lua` sanitiser through wasmoon, and a Windows replace-while-open test in CI.
 - `scripts/prepare.*` and CI use the pinned toolchain; Windows results appear only after the first CI run.
+
+## Addendum (Phase 1 start, 2026-11-14)
+- **TypeScript 6.0.3**, not 7.0.2: `typescript-eslint` 8.72.2 declares `typescript >=4.8.4 <6.1.0`, and lint needs it. Revisit when typescript-eslint supports 7.
+- **valibot 1.5.0** validates the app's own data (settings file, API request bodies). Plugin config content is not schema-validated by the server: the plugin's Lua is the validator.
+- **Vitest 5.1.0** for unit and contract tests; `node:test` stays for the scripts folder.
+- **Lua runs only in the browser/worker**, as the architecture says; the server has no Lua endpoint. The in-repo `src/lua/` host is exercised by contract tests in Node through the same code.
+- Dependencies added: `wasmoon` (Lua 5.4 in WASM), `valibot`, `typescript`, `typescript-eslint`, `vitest`, `@types/node`.

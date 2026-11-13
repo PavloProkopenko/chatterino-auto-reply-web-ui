@@ -3,18 +3,19 @@
 ## Project
 Optional, separate project: a local web app that edits the `data/config.json` of the Auto Reply plugin (sibling repo `../auto-reply-plugin/`, Lua plugin for Leafyrino, a Chatterino fork). The plugin must keep working without this app. Owner: Pavlo. Chat language with the owner: English; UI text is Russian.
 
-**Start here:** `PLAN.md` (decisions, architecture, edge cases, phases), `docs/CONTRACT.md` (the plugin's config contract), `docs/adr/0001-stack.md` (stack, accepted). Status: Phase 0 (environment) done; no product code yet. Next: Phase 1, after the owner answers the phase's edge-case questions.
+**Start here:** `PLAN.md` (decisions, architecture, edge cases, phases), `docs/CONTRACT.md` (the plugin's config contract), `docs/adr/0001-stack.md` (stack, accepted). Status: Phase 0 done; Phase 1 (core: server, store, merge, Lua host) implemented per `docs/phase-1-plan.md`, pending the owner's review. No UI yet.
 
 ## Commands
 Toolchain lives in `.tools/` (gitignored): `export PATH="$PWD/.tools/node/bin:$PWD/.tools/pnpm/node_modules/.bin:$PATH"` (macOS; `scripts/prepare.sh` creates it, `scripts\prepare.ps1` on Windows).
 - `scripts/prepare.sh [--check]`: set up everything, then lint, tests, vendor check, build smoke.
-- `pnpm lint`, `pnpm test`, `pnpm sync-plugin:check`, `pnpm build:smoke`; `pnpm sync-plugin` re-vendors the plugin Lua (plugin repo read-only).
+- `pnpm lint`, `pnpm typecheck`, `pnpm test` (node:test for scripts + Vitest), `pnpm sync-plugin:check`, `pnpm build:smoke` (compiles `src/server/main.ts` with Bun and runs `scripts/smoke.mjs`); `pnpm sync-plugin` re-vendors the plugin Lua (plugin repo read-only).
 - Project agents in `.claude/agents/` (architect, backend-dev, frontend-dev, qa-tester); commands `/adr`, `/spike`, `/contract-check`, `/release-check`.
-- `spikes/` is throw-away (own lockfiles); never reuse it as product code.
+- Layout: `src/shared` (config model, merge, ids; no I/O), `src/server` (store, discovery, settings, HTTP API), `src/lua` (WASM Lua host + worker client), `tests/` (Vitest, synthetic fixtures in `tests/fixtures/`). `spikes/ui-svelte` is a throw-away reference.
+- Never log config contents; the server logs only method, path and status.
 
 ## Hard facts
 - The plugin reads `config.json` only at start or `/autoreply reload`, and rewrites the whole file on every change it makes. The UI writes and tells the user to run `/autoreply reload`. Never edit live state (`active_until`, timer `started_at`/`game_id`/`enabled`) from stale data.
-- Empty lists are stored as `{}` by the plugin. Preserve unknown keys. Ids are never reused.
+- Empty lists may be stored as `{}` or `[]` depending on the Leafyrino build (`[]` accepted on load: VERIFIED on Nightly 2.5.5, macOS); read both, and the app writes `{}` until the owner decides otherwise. Preserve unknown keys. Ids are never reused.
 - Rule evaluation in the UI = the plugin's real Lua run in WASM (vendored copies in `vendor/plugin/`, synced by script, hash-checked). Do not re-implement matching in TypeScript.
 - Local server: 127.0.0.1 only, random port, Host check + per-session token, no external requests.
 - Portable bundles for Windows x64 and macOS arm64/x64; prepare scripts exist for developers (`scripts/prepare.ps1`, `scripts/prepare.sh`).

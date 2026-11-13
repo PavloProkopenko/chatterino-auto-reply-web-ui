@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "channels": [],
+  "ignore_users": [],
+  "protect_users": [],
+  "per_user_cooldown": 60,
+  "per_rule_cooldown": 10,
+  "global_min_gap": 2,
+  "only_when_live": false,
+  "skip_mods": false,
+  "mute_lurkers": false,
+  "backfire": true,
+  "next_rule_id": 2,
+  "rules": [
+    {
+      "id": 1,
+      "name": "проверка",
+      "enabled": true,
+      "reply": "привет, {user}!",
+      "channels": [],
+      "conditions": [{ "type": "word", "match": "хелло" }]
+    }
+  ],
+  "next_timer_id": 1,
+  "timers": [],
+  "next_redeem_id": 1,
+  "redeems": []
+}
