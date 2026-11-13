@@ -3,7 +3,14 @@
 ## Project
 Optional, separate project: a local web app that edits the `data/config.json` of the Auto Reply plugin (sibling repo `../auto-reply-plugin/`, Lua plugin for Leafyrino, a Chatterino fork). The plugin must keep working without this app. Owner: Pavlo. Chat language with the owner: English; UI text is Russian.
 
-**Start here:** `PLAN.md` (decisions, architecture, edge cases, phases) and `docs/CONTRACT.md` (the plugin's config contract). Status: planning done, nothing implemented. The first task is Phase 0 (environment: repo, stack ADR with spikes, prepare scripts, SDLC agents/skills).
+**Start here:** `PLAN.md` (decisions, architecture, edge cases, phases), `docs/CONTRACT.md` (the plugin's config contract), `docs/adr/0001-stack.md` (stack, accepted). Status: Phase 0 (environment) done; no product code yet. Next: Phase 1, after the owner answers the phase's edge-case questions.
+
+## Commands
+Toolchain lives in `.tools/` (gitignored): `export PATH="$PWD/.tools/node/bin:$PWD/.tools/pnpm/node_modules/.bin:$PATH"` (macOS; `scripts/prepare.sh` creates it, `scripts\prepare.ps1` on Windows).
+- `scripts/prepare.sh [--check]`: set up everything, then lint, tests, vendor check, build smoke.
+- `pnpm lint`, `pnpm test`, `pnpm sync-plugin:check`, `pnpm build:smoke`; `pnpm sync-plugin` re-vendors the plugin Lua (plugin repo read-only).
+- Project agents in `.claude/agents/` (architect, backend-dev, frontend-dev, qa-tester); commands `/adr`, `/spike`, `/contract-check`, `/release-check`.
+- `spikes/` is throw-away (own lockfiles); never reuse it as product code.
 
 ## Hard facts
 - The plugin reads `config.json` only at start or `/autoreply reload`, and rewrites the whole file on every change it makes. The UI writes and tells the user to run `/autoreply reload`. Never edit live state (`active_until`, timer `started_at`/`game_id`/`enabled`) from stale data.
