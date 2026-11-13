@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "active_until": "forever",
+  "channels": {},
+  "ignore_users": {},
+  "protect_users": {},
+  "per_user_cooldown": 60,
+  "per_rule_cooldown": 10,
+  "global_min_gap": 2,
+  "only_when_live": false,
+  "future_setting": {
+    "nested": [
+      1,
+      2,
+      3
+    ],
+    "empty": {}
+  },
+  "next_rule_id": 4,
+  "rules": [
+    {
+      "id": 1,
+      "enabled": true,
+      "type": "keyword",
+      "match": "донат",
+      "reply": "Донаты тут: {user}",
+      "channels": {}
+    },
+    {
+      "id": 3,
+      "name": "плейлист",
+      "enabled": true,
+      "reply": "Плейлист в описании",
+      "channels": [
+        "streamer"
+      ],
+      "conditions": [
+        {
+          "type": "anyword",
+          "match": "!плейлист|!playlist"
+        }
+      ],
+      "unknown_rule_key": 7
+    }
+  ],
+  "next_timer_id": 2,
+  "timers": [
+    {
+      "id": 1,
+      "channel": "streamer",
+      "trigger": "играет",
+      "reply": "Играет уже {time}",
+      "format": "smart",
+      "on_category": "reset",
+      "enabled": true,
+      "started_at": 1700000000,
+      "game_id": "123"
+    }
+  ],
+  "next_redeem_id": 2,
+  "redeems": [
+    {
+      "id": 1,
+      "channel": "streamer",
+      "title": "Мут",
+      "action": "timeout",
+      "seconds": 60,
+      "enabled": true
+    }
+  ]
+}
