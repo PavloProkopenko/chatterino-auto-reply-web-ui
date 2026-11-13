@@ -1,0 +1,50 @@
+# Contract with the Auto Reply plugin
+
+Everything here was verified against the plugin source in `../auto-reply-plugin/auto-reply/` (plugin v0.5.0) unless marked UNVERIFIED. The web app is a **separate, optional project**: the plugin must keep working with no knowledge of it. The only interface is the plugin's `data/config.json`.
+
+## 1. Where the file lives
+`<app data dir>/Plugins/<plugin folder>/data/config.json`, next to `<plugin folder>/info.json` (`"name": "Auto Reply"`, `"version": "x.y.z"`).
+- macOS: `~/Library/Application Support/<app folder>/Plugins/...` — seen on the dev Mac: `chatterino`, `Chatterino by Mist1X`.
+- Windows: `%APPDATA%\<app folder>\Plugins\...` (stock folder `Chatterino`; leafyrino's may differ).
+- Linux: `~/.local/share/<app folder>/Plugins/...`.
+- The app folder and the plugin folder name vary, so **detect by content**: scan one level under the roots above for `*/Plugins/*/info.json` whose `name` is `Auto Reply`, then use its `data/config.json`. Several matches (stock + fork) are possible: let the user pick. `data/` may not exist yet or `config.json` may be absent (plugin never ran): offer "create default config".
+- Fallback: user types/browses a path to a `config.json`. Accept only a file named `config.json`; show a warning if no sibling `../info.json` with name `Auto Reply` exists.
+
+## 2. File semantics (these drive every edge case)
+- The plugin reads the file **only** at start/reload (`/autoreply reload`, which also resets a session-only "on"). It **rewrites the whole file on every change** it makes (`/autoreply ...` commands, timer start/stop, category change). A UI write while the app runs can be overwritten by the next plugin save, and is not seen until `/autoreply reload`. Decision: **UI writes, then tells the user to run `/autoreply reload`**; the UI detects external changes by content hash + mtime, always keeps a backup, writes atomically (temp file + rename). Never edit live-state fields (below).
+- The plugin has no file watching and no network. Any "live" feature is out of scope.
+- JSON serializer quirk: an **empty list is written as `{}`** (`"channels": {}`, `"ignore_users": {}`, `"redeems": {}` and `rules[].channels: {}`). The reader must treat `{}` as an empty list for all list fields. When writing, emit `[]`. UNVERIFIED in the app: that Chatterino's `json.parse` accepts `[]` for those fields (the plugin's own test codec does) — verify manually early.
+- Unknown keys must be **preserved** on round trip (newer plugin versions add fields). Key order is irrelevant.
+- `config.load` sanitises silently (drops invalid timers/redeems/names, disables rules or timers with unusable conditions/channels, corrupt file is backed up as `config.json.bad`). The UI should show what the plugin would drop, not hide it.
+
+## 3. Schema (v1, plugin 0.5.0)
+Global: `version` (1), `active_until` (nil | `"forever"` | unix seconds; **live state, do not edit**), `channels[]` (logins), `ignore_users[]`, `protect_users[]`, `per_user_cooldown` (s, default 60), `per_rule_cooldown` (10), `global_min_gap` (>= 1, default 2), `only_when_live` (bool), `skip_mods` (bool, default false), `mute_lurkers` (bool, false), `backfire` (bool, true), `next_rule_id`, `next_timer_id`, `next_redeem_id` (ids are never reused: the UI must keep these counters correct).
+
+`rules[]`: `{ id, name?, enabled, reply, channels[] (empty = all channels), conditions[{type, match?}], skip_mods? (true|false|absent = follow global), skip_users[]? }`. Legacy: `type`/`match` directly on the rule = one condition (`rules.conditions`). Order matters: **first matching rule wins**.
+
+`timers[]`: `{ id, name?, channel, reply, format ("smart"|"full"), on_category ("reset"|"stop"|"off"), conditions[] (legacy: single-word `trigger` = one `word` condition), skip_mods?, skip_users[]?, enabled, started_at, game_id }`. `enabled`, `started_at`, `game_id` are **live state**: the plugin sets them when a timer starts. All timers are checked before rules. Reply must contain `{time}`.
+
+`redeems[]`: `{ id, name?, channel, title, action ("timeout"|"untimeout"), seconds? (timeout only, 1..1209600), enabled }`.
+
+Condition `type`: `keyword` (substring), `word` (whole word/phrase), `anyword` (`a|b|c`, each a whole word), `mention` (no `match`), `flag` (`match` in `first highlighted reply announcement sub cheer`), `pattern` (Lua pattern). Conditions of one item are ANDed (the plugin's chat syntax joins them with ` + `); there is no OR inside an item (use two rules).
+
+## 4. Validation rules the UI must honour (do not re-implement: run the plugin's Lua, see PLAN.md)
+- Reply (rules and timers): non-empty, <= 500 chars, must not start with `/` or `.`; timers also need `{time}`. Placeholders: `{user}` (sender), `{time}` (timers). The check lives in `engine.lua` (`E.check_reply`), which is not pure; see "Recommended plugin change" below.
+- `rules.validate(type, match)`, `names.valid/check/find` (1-20 chars, letters incl. Cyrillic/digits/`_`/`-`, at least one letter, unique per kind, case-insensitive, not a reserved command word — list in `names.lua`), `util.parse_duration` (`30m`, `1h30m`), `util.parse_channels`, `util.parse_skip`.
+- Matching semantics: custom Unicode lower-casing (Latin + Cyrillic incl. Ukrainian); word characters are ASCII letters, digits, `_` and every byte >= 128 (so `играет2` is not `играет`); `mention` needs the account login.
+- Chat-side limits worth surfacing: send rate limiting drops fast messages; replies are sent with `execute_commands=false`; per-user/per-rule cooldowns and `global_min_gap` apply; a rule bound to a channel that is not in `channels` is dormant.
+
+## 5. Version gating (read `info.json` version)
+| Feature | Plugin version |
+|---|---|
+| names on rules/timers/redeems | 0.2.1 |
+| rule channel scope (`channels`) | 0.3.0 |
+| timer conditions (`conditions[]`, `=>` syntax) | 0.4.0 |
+| `skip_mods` / `skip_users` | 0.5.0 |
+Older plugin + newer feature = the UI disables the control and explains why. Newer plugin than the UI knows = open read/write with a "some settings may be preserved but not editable" notice.
+
+## 6. Recommended plugin change (not part of the web project; needs the owner's go-ahead)
+Extract `E.check_reply` and the rule/timer constructors' validation into a pure module (`rules.lua` or a new `validate.lua`) with no `c2`/engine dependency, so the web app's in-browser Lua can run the exact same checks. Until then the web app vendors `util.lua`, `rules.lua`, `names.lua`, and a thin copy of `check_reply` covered by a contract test.
+
+## 7. Test material
+The plugin repo has a gitignored `auto-reply/tests/` with a labelled, anonymised chat fixture, `config.stream.json`, `config.fixed.json`, `config.customer.json` and `lua tests/run.lua`. Do not copy chat data into the web repo. Use them only through an optional env var (`PLUGIN_REPO=../auto-reply-plugin`) for local cross-checks; CI uses small synthetic fixtures. `config.customer.json` is a good real-world sample for the config reader (contains legacy shapes such as `{}` lists).
