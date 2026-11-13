@@ -17,5 +17,15 @@ Installed by hand after the owner approved each item. Third-party skills run wit
 - `webapp-testing` (anthropics/skills, Apache-2.0): Playwright helpers for end-to-end checks of the built executable. Revisit in Phase 1 once the e2e setup exists.
 - A framework best-practices skill (e.g. React or Svelte) after `docs/adr/0001-stack.md` picks the UI stack.
 
-## Agents (to create in Phase 0, `.claude/agents/`)
-`architect`, `frontend-dev`, `backend-dev`, `qa-tester`, `security-reviewer`, `release-engineer`, `docs-writer` as described in `PLAN.md` section 4 (Phase 0, item 4). Project commands `/adr`, `/spike`, `/contract-check`, `/release-check` come with them.
+## Agents (`.claude/agents/`, created in Phase 0)
+| Agent | Role |
+|---|---|
+| `architect` | ADRs, `docs/CONTRACT.md`, vendoring (`vendor/plugin/`, `scripts/sync-plugin.mjs`) |
+| `backend-dev` | local server, config discovery, safe writes, localhost security |
+| `frontend-dev` | Svelte UI in Russian, accessibility, builders and previews |
+| `qa-tester` | unit, contract and e2e tests, sample-config replay |
+
+Deferred until their phases (owner decision in Phase 0): `security-reviewer`, `release-engineer`, `docs-writer`. Until then use the built-in `security-review` and `code-review` skills.
+
+## Project commands (`.claude/commands/`)
+`/adr <title>`, `/spike <name> <question>`, `/contract-check`, `/release-check`.
