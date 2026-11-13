@@ -55,6 +55,7 @@ fi
 cd "$ROOT"
 "$PNPM" install --frozen-lockfile
 "$PNPM" lint
+"$PNPM" typecheck
 "$PNPM" test
 "$PNPM" sync-plugin:check
 "$PNPM" build:smoke

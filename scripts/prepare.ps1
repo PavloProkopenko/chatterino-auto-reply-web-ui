@@ -56,7 +56,7 @@ if ($Check) {
 }
 
 Set-Location $Root
-foreach ($step in @(@('install','--frozen-lockfile'), @('lint'), @('test'), @('sync-plugin:check'), @('build:smoke'))) {
+foreach ($step in @(@('install','--frozen-lockfile'), @('lint'), @('typecheck'), @('test'), @('sync-plugin:check'), @('build:smoke'))) {
   & $pnpmBin @step
   if ($LASTEXITCODE) { throw "pnpm $($step -join ' ') failed" }
 }
