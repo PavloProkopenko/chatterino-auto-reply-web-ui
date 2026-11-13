@@ -1,0 +1,1 @@
+{ "name": "spike-lua-wasm", "private": true, "type": "module", "dependencies": { "wasmoon": "1.16.0" } }
