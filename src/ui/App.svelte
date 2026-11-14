@@ -8,10 +8,9 @@
   import SaveBar from './components/SaveBar.svelte';
   import Sidebar from './components/Sidebar.svelte';
   import Settings from './pages/Settings.svelte';
-  import { session, startLifecycle } from './state/app.svelte.ts';
+  import { session } from './state/app.svelte.ts';
 
   onMount(() => {
-    startLifecycle();
     void session.start();
   });
 

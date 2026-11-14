@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { OfflineError } from '../../src/shared/api-types.ts';
-import { createClient } from '../../src/ui/api/client.ts';
+import { createClient } from '../../src/ui/data/client.ts';
 
 const reply = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 const fakeFetch = (handler: (path: string, init: RequestInit) => Response | Promise<Response>) => (async (path: string, init: RequestInit) => handler(path, init)) as unknown as typeof fetch;

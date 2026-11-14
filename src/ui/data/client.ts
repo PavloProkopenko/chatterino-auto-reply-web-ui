@@ -35,8 +35,8 @@ function safeStorage(): Storage | null {
 
 type Reply = { status: number; body: any }; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-export function createClient(token: string | null, fetchFn: typeof fetch = (...a) => fetch(...a)): Api & { heartbeat(tab: string): Promise<void>; bye(tab: string): void } {
-  async function raw(path: string, init: { method?: string; body?: unknown; keepalive?: boolean } = {}): Promise<Reply> {
+export function createClient(token: string | null, fetchFn: typeof fetch = (...a) => fetch(...a)): Api {
+  async function raw(path: string, init: { method?: string; body?: unknown } = {}): Promise<Reply> {
     if (!token) throw new OfflineError();
     let res: Response;
     try {
@@ -44,7 +44,6 @@ export function createClient(token: string | null, fetchFn: typeof fetch = (...a
         method: init.method ?? 'GET',
         headers: { 'x-session-token': token, ...(init.body !== undefined ? { 'content-type': 'application/json' } : {}) },
         ...(init.body !== undefined ? { body: JSON.stringify(init.body) } : {}),
-        ...(init.keepalive ? { keepalive: true } : {}),
       });
     } catch {
       throw new OfflineError();
@@ -96,12 +95,6 @@ export function createClient(token: string | null, fetchFn: typeof fetch = (...a
       const r = await raw('/api/backups/restore', { method: 'POST', body: { name } });
       if (r.status === 200 || r.status === 409) return r.body as RestoreResponse;
       throw unexpected(r);
-    },
-    async heartbeat(tab) {
-      await raw('/api/heartbeat', { method: 'POST', body: { tab } });
-    },
-    bye(tab) {
-      void raw('/api/bye', { method: 'POST', body: { tab }, keepalive: true }).catch(() => undefined);
-    },
+    }
   };
 }
