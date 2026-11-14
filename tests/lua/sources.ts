@@ -12,6 +12,7 @@ export function luaSources() {
       rules: vendor('rules.lua'),
       names: vendor('names.lua'),
       config: vendor('config.lua'),
+      uichecks: own('uichecks.lua'),
     },
     shim: own('shim.lua'),
     json: own('json.lua'),

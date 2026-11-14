@@ -7,12 +7,13 @@ import config from '../../vendor/plugin/config.lua?raw';
 import names from '../../vendor/plugin/names.lua?raw';
 import rules from '../../vendor/plugin/rules.lua?raw';
 import util from '../../vendor/plugin/util.lua?raw';
+import uichecks from '../lua/uichecks.lua?raw';
 
 /** The plugin's real Lua, in a Web Worker; a runaway pattern costs the worker, not the page. */
 export function createUiLua(timeoutMs = 1500): LuaClient {
   return createLuaClient({
     spawn: () => fromWebWorker(new Worker(new URL('../lua/worker-entry.ts', import.meta.url), { type: 'module' })),
-    sources: { modules: { util, rules, names, config }, shim, json, bridge, wasmUri: new URL(wasmUrl, location.href).href },
+    sources: { modules: { util, rules, names, config, uichecks }, shim, json, bridge, wasmUri: new URL(wasmUrl, location.href).href },
     timeoutMs,
   });
 }
