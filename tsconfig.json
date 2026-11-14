@@ -14,7 +14,8 @@
     "isolatedModules": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["node", "vite/client"]
+    "types": ["node", "vite/client"],
+    "paths": { "/data/*": ["./src/ui/data/*"] }
   },
   "include": ["src", "tests", "vitest.config.ts", "vite.config.ts"]
 }

@@ -1,6 +1,7 @@
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
+import { SECURITY_HEADERS } from './src/shared/security-headers.ts';
 
 // The site is static (Vercel serves `dist`). It runs under a strict CSP (src/shared/security-headers.ts):
 // no inline scripts, no inline <style>, no style="" attributes (use classes), no Svelte transitions, no external hosts.
@@ -18,4 +19,7 @@ export default defineConfig(({ mode }) => ({
     sourcemap: false,
   },
   worker: { format: 'es' },
+  server: { host: '127.0.0.1' },
+  // `vite preview` serves the production build with the production headers (the dev server has none: it injects styles)
+  preview: { host: '127.0.0.1', port: 4173, strictPort: true, headers: SECURITY_HEADERS },
 }));
