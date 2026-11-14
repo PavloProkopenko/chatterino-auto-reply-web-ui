@@ -21,7 +21,7 @@ Installed by hand after the owner approved each item. Third-party skills run wit
 | Agent | Role |
 |---|---|
 | `architect` | ADRs, `docs/CONTRACT.md`, vendoring (`vendor/plugin/`, `scripts/sync-plugin.mjs`) |
-| `backend-dev` | the browser file layer (File System Access API, import/export, backups, safe writes) and the dormant local API |
+| `backend-dev` | the browser file layer (File System Access API, import/export, backups, safe writes) |
 | `frontend-dev` | Svelte UI in Russian, accessibility, builders and previews |
 | `qa-tester` | unit, contract and e2e tests, sample-config replay |
 

@@ -1,6 +1,6 @@
 # Auto Reply Web
 
-A web UI for the **Auto Reply** plugin for Leafyrino (a Chatterino fork). It is a static site (hosted on Vercel): the user opens a URL, picks the plugin's `config.json`, edits it in the browser and saves; nothing is uploaded anywhere. The plugin keeps working without it. UI language: Russian. Status: Phases 0-2 done (Settings page); the browser file layer (Phase 2b) is next. See `PLAN.md` (section 0a), `docs/CONTRACT.md` and `docs/adr/`.
+A web UI for the **Auto Reply** plugin for Leafyrino (a Chatterino fork). It is a static site (hosted on Vercel): the user opens a URL, picks the plugin's `config.json`, edits it in the browser and saves; nothing is uploaded anywhere. The plugin keeps working without it. UI language: Russian. Status: Phases 0-2 and the browser file layer (2b) done; Rules, Timers and Redeems pages come next. See `PLAN.md` (section 0a), `docs/CONTRACT.md` and `docs/adr/`.
 
 ## Develop
 
@@ -16,7 +16,7 @@ Then (the script prints the exact PATH line):
 
 ```sh
 export PATH="$PWD/.tools/pnpm/node_modules/.bin:$PATH"
-pnpm dev        # Vite dev server with hot reload; first run creates a synthetic plugin install in .app-data/
+pnpm dev        # Vite dev server with hot reload; use "Попробовать на примере" (demo) or pick a real plugin folder in Chrome/Edge
 pnpm preview    # the production build with the production security headers
 pnpm build      # output in dist/ (what Vercel deploys)
 pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e

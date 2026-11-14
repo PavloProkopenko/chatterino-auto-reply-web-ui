@@ -8,7 +8,7 @@ Project: a web UI (a static site hosted on Vercel, working on the user's own fil
 | 0 Environment | **Done** (`docs/phase-0-plan.md`, ADR 0001 accepted) |
 | 1 Core | **Done on the dev Mac** (`docs/phase-1-plan.md`), built for the old local-server design; the config model, merge, ids and Lua host are reused, the server pieces are dormant (see 0a) |
 | 2 Shell and Settings | **Done on the dev Mac** (`docs/phase-2-plan.md`): UI shell + Settings page, e2e in a real browser. It still reads and writes through the dormant local API stand-in |
-| 2b Hosted data layer | **Next**: replace the API stand-in with browser file access (File System Access API) plus import/export, deploy config for Vercel |
+| 2b Hosted data layer | **Done on the dev Mac** (`docs/phase-2b-plan.md`): browser file access (File System Access API), open/download fallback, demo mode, backups in browser storage, change polling; the old local server is deleted. Pending: the owner's manual check on real folders |
 | 3-7 | Not started |
 
 **Postponed by the owner:** the first CI run (nothing is pushed yet). Windows and Intel-macOS no longer matter for customers (there is no download), only browser support does (see 0a).
@@ -18,9 +18,9 @@ Project: a web UI (a static site hosted on Vercel, working on the user's own fil
 The owner dropped the local app and the release build. The site is static, hosted on Vercel; customers open a URL and install nothing. Everything runs in the browser and nothing leaves it: no server receives the config.
 - **File access:** the File System Access API (Chrome, Edge, Opera): the user picks `config.json` once, the site reads and saves it in place and remembers the handle. In Firefox and Safari the same screens use "open file" and "download the result". UNVERIFIED so far: whether the browser lets users pick files under `AppData` / `Library/Application Support`, permission re-prompts after a restart, and how the real plugin reacts to an in-place write.
 - **Removed:** the compiled executable and bundles, the release pipeline (old section 4a), the customer-download docs, Windows/macOS packaging, the browser opener, the exit-with-last-tab lifecycle, the prepare-script toolchain download for Windows, `release-check`.
-- **Kept, dormant:** `src/server/` (HTTP API, file store, discovery, settings). It is not shipped. Today it is the stand-in that lets the UI work in `pnpm dev`; Phase 2b replaces it in the UI and the server can then be deleted or kept for a future local mode.
+- **Deleted in Phase 2b:** `src/server/` (HTTP API, file store, discovery, settings) and the dev proxy; its file-store logic moved to `src/ui/data/store.ts`. Git history keeps the old server.
 - **Reused:** `src/shared` (config model, merge, ids, features), `src/lua` (WASM Lua host), `src/ui` (shell and Settings page).
-- **Local development:** `pnpm dev` (Vite dev server with hot reload, a synthetic plugin install in `.app-data/`), `pnpm preview` (the production build with the production CSP), `pnpm build` (output `dist`, what Vercel deploys), `vercel.json` (headers; tested against `src/shared/security-headers.ts`).
+- **Local development:** `pnpm dev` (Vite dev server with hot reload; demo mode or a real folder in Chrome/Edge), `pnpm preview` (the production build with the production CSP), `pnpm build` (output `dist`, what Vercel deploys), `vercel.json` (headers; tested against `src/shared/security-headers.ts`).
 - **Affected edge cases (section 3):** 1, 10, 11, 12, 13 are rewritten for the browser; 15 gains "no analytics, no third-party scripts, nothing sent anywhere".
 
 Phase deliverables are described in sections 3 and 4; the phase plans in `docs/` record what was actually built and where it differs.

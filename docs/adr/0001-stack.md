@@ -88,3 +88,11 @@ The owner moved from a local app to a static site on Vercel (`PLAN.md` section 0
 - **TypeScript rule:** `erasableSyntaxOnly` is on, so Node can run `.ts` files directly (`node --experimental-strip-types`), which the dev stack and the e2e harness do.
 - **e2e:** `pnpm test:e2e` builds `dist-e2e` (`--mode e2e`, adds the `window.__e2e` seam) and runs Playwright against `vite preview` with the production headers.
 - **UNVERIFIED:** pnpm 12 on Vercel's build image (`vercel.json` installs it with npm; corepack cannot start pnpm 12); the File System Access API behaviour on the real plugin folder (Phase 2b).
+
+## Addendum (Phase 2b, 2026-11-14): the browser file layer
+- **Data layer:** `src/ui/data/store.ts` is the old server store ported to the browser over two ports (`FileAccess`, `BackupStore`). Save re-reads the file, compares a SHA-256 of the text, merges or reports a conflict, keeps a backup, writes through the handle's writable stream (the browser swaps it in atomically on close) and re-checks right before writing. A busy file is retried with backoff, then the exact text is offered as a download.
+- **Browser pieces:** `fs-access.ts` (File System Access API: pickers, permission query/re-grant, error mapping), `persistence.ts` (IndexedDB: the chosen handle and per-source backups, last 20; an in-memory fallback in private windows), `workspace.ts` (folder, single file, upload and demo sources; `webkitdirectory` upload is the Firefox/Safari path).
+- **No path on screen:** the browser reveals only names, so the path-privacy toggle is gone.
+- **Removed:** `src/server/`, the dev proxy and `scripts/devstack.ts`, the API types, `valibot` (nothing validates server input any more; IndexedDB records are our own).
+- **Dev and e2e:** `pnpm dev` is plain Vite. Playwright runs against `vite preview` (production build, production headers) and the dev server; the browser's private file system (OPFS) stands in for a user's folder behind stubbed pickers, plus switches for permission loss and busy files. `VITE_POLL_MS` shortens the change-polling interval in the e2e build only.
+- **UNVERIFIED:** picking the real plugin folder on the owner's system (`docs/manual-checks/file-access.md`), Firefox/Safari, Edge/Opera, Windows, whether Chromium blocks `AppData` / `Library` children on real systems, and the real plugin's reaction to an in-place write.
