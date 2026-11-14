@@ -21,9 +21,12 @@
     for (const item of items) {
       if (seen.has(item)) continue;
       seen.add(item);
-      void validate(item).then((r) => {
-        if (!r.ok || r.value !== item) rejected[item] = r.ok ? ru.settings.lists.pluginRejects : r.error;
-      });
+      validate(item).then(
+        (r) => {
+          if (!r.ok || r.value !== item) rejected[item] = r.ok ? ru.settings.lists.pluginRejects : r.error;
+        },
+        () => seen.delete(item), // the Lua worker was stopped or is unavailable: try again the next time the list changes
+      );
     }
   });
 

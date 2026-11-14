@@ -103,6 +103,7 @@ button:disabled, [aria-disabled='true'] { cursor: not-allowed; }
 .banner.warn { border-color: #b45309; background: var(--warn-bg); }
 .banner.error { border-color: #b91c1c; background: var(--danger-bg); }
 .banner .row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2); }
+.hidden { display: none !important; }
 .cmd { padding: var(--s1) var(--s2); border-radius: var(--radius-sm); background: rgba(0, 0, 0, 0.35); }
 
 /* Form blocks */
@@ -141,6 +142,10 @@ button:disabled, [aria-disabled='true'] { cursor: not-allowed; }
 .gate { display: flex; align-items: center; justify-content: center; height: 100%; padding: var(--s5); overflow-y: auto; }
 .gate form.field { padding-top: var(--s4); border-top: 1px solid var(--border); }
 .gate .panel { display: flex; flex-direction: column; gap: var(--s4); width: 100%; max-width: 640px; padding: var(--s6); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.file-pick { cursor: pointer; }
+.file-pick:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+.gate .row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s2); }
+.gate .demo { padding-top: var(--s4); border-top: 1px solid var(--border); }
 .choice { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); padding: var(--s3) var(--s4); border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--bg); }
 .choice .meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .choice .path { word-break: break-all; font-size: 13px; }

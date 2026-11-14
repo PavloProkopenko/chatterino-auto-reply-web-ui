@@ -1,10 +1,6 @@
-import { spawn, type ChildProcess } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { test as base, expect, type Page } from '@playwright/test';
 
-const devstack = join(import.meta.dirname, '../../scripts/devstack.ts');
+export const DEV = 'http://127.0.0.1:5199';
 
 export const sampleConfig = (over: Record<string, unknown> = {}) =>
   JSON.stringify(
@@ -30,68 +26,107 @@ export const sampleConfig = (over: Record<string, unknown> = {}) =>
     2,
   ) + '\n';
 
-export interface App {
-  url: string;
-  pluginDir: string;
-  configPath: string;
-  dataDir: string;
-  exited: Promise<number | null>;
-  read(): Promise<string>;
+/**
+ * A stand-in for the user's plugin folder. The browser's private file system (OPFS) has the same handle API as a
+ * real folder but, unlike a native dialog, can be driven by a test. The page's pickers are replaced to return it.
+ * What a test does with it mirrors reality: `write` is the running plugin saving the file.
+ */
+export interface Sandbox {
+  install(opts?: { config?: string | null; version?: string }): Promise<void>;
+  read(): Promise<string | null>;
   write(text: string): Promise<void>;
-  backups(): Promise<string[]>;
-  stop(): Promise<void>;
+  names(): Promise<string[]>;
 }
 
-export interface StartOptions {
-  config?: string | null; // null: plugin installed but no config file yet
-  pluginVersion?: string;
-  /** Serve through the Vite dev server (source modules, no CSP) instead of the production build. */
-  dev?: boolean;
-}
+const PICKERS = () => {
+  const w = window as unknown as Record<string, unknown>;
+  const plugin = async () => (await navigator.storage.getDirectory()).getDirectoryHandle('plugin');
+  w.showDirectoryPicker = async () => plugin();
+  w.showOpenFilePicker = async () => [await (await (await plugin()).getDirectoryHandle('data')).getFileHandle('config.json')];
+};
 
-export async function startApp(opts: StartOptions = {}): Promise<App> {
-  const tmp = await mkdtemp(join(tmpdir(), 'e2e-'));
-  const pluginDir = join(tmp, 'roots', 'Chatterino', 'Plugins', 'auto-reply');
-  const dataDir = join(tmp, 'app-data');
-  await mkdir(join(pluginDir, 'data'), { recursive: true });
-  await writeFile(join(pluginDir, 'info.json'), JSON.stringify({ name: 'Auto Reply', version: opts.pluginVersion ?? '0.5.0' }));
-  const configPath = join(pluginDir, 'data', 'config.json');
-  if (opts.config !== null) await writeFile(configPath, opts.config ?? sampleConfig());
-
-  // The production build (dist-e2e, made by `pnpm test:e2e`) behind `vite preview` with the real CSP, plus the API stand-in.
-  const child: ChildProcess = spawn(
-    process.execPath,
-    opts.dev
-      ? ['--experimental-strip-types', '--no-warnings', devstack, 'dev', '--no-open', '--port', '5199', '--roots', join(tmp, 'roots'), '--data', dataDir]
-      : ['--experimental-strip-types', '--no-warnings', devstack, 'preview', '--mode', 'e2e', '--no-build', '--roots', join(tmp, 'roots'), '--data', dataDir],
-    { env: process.env },
-  );
-  const exited = new Promise<number | null>((res) => child.on('exit', (code) => res(code)));
-  const url = await new Promise<string>((resolve, reject) => {
-    let seen = '';
-    child.stdout!.on('data', (d) => {
-      seen += String(d);
-      const line = seen.split('\n').find((l) => l.startsWith('http://'));
-      if (line) resolve(line);
-    });
-    child.on('error', reject);
-    setTimeout(() => reject(new Error('server did not start')), 10_000);
-  });
-  return {
-    url,
-    pluginDir,
-    configPath,
-    dataDir,
-    exited,
-    read: () => readFile(configPath, 'utf8'),
-    write: (text) => writeFile(configPath, text),
-    backups: async () => (await readdir(join(pluginDir, 'data'))).filter((n) => n.startsWith('config.json.bak-')),
-    async stop() {
-      child.kill();
-      await exited;
-      await rm(tmp, { recursive: true, force: true });
-    },
+/** Permission and write-failure switches for tests (`sessionStorage.__perm`, `window.__busy`, `window.__denied`). */
+const SWITCHES = () => {
+  const proto = FileSystemHandle.prototype as unknown as Record<string, unknown>;
+  proto.queryPermission = async () => sessionStorage.getItem('__perm') ?? 'granted';
+  proto.requestPermission = async () => {
+    sessionStorage.setItem('__perm', 'granted');
+    (window as unknown as Record<string, unknown>).__denied = false;
+    return 'granted';
   };
+  const original = FileSystemFileHandle.prototype.createWritable;
+  FileSystemFileHandle.prototype.createWritable = function (this: FileSystemFileHandle, ...args) {
+    const w = window as unknown as Record<string, unknown>;
+    if (w.__busy) throw new DOMException('locked by another program', 'NoModificationAllowedError');
+    if (w.__denied) throw new DOMException('no permission', 'NotAllowedError');
+    return original.apply(this, args);
+  };
+};
+
+export function sandboxFor(page: Page): Sandbox {
+  return {
+    async install({ config = sampleConfig(), version = '0.5.0' } = {}) {
+      await page.evaluate(
+        async ({ config, version }) => {
+          const root = await navigator.storage.getDirectory();
+          await root.removeEntry('plugin', { recursive: true }).catch(() => undefined);
+          const plugin = await root.getDirectoryHandle('plugin', { create: true });
+          const put = async (dir: FileSystemDirectoryHandle, name: string, text: string) => {
+            const w = await (await dir.getFileHandle(name, { create: true })).createWritable();
+            await w.write(text);
+            await w.close();
+          };
+          await put(plugin, 'info.json', JSON.stringify({ name: 'Auto Reply', version }));
+          if (config !== null) await put(await plugin.getDirectoryHandle('data', { create: true }), 'config.json', config);
+        },
+        { config, version },
+      );
+    },
+    read: () =>
+      page.evaluate(async () => {
+        try {
+          const data = await (await (await navigator.storage.getDirectory()).getDirectoryHandle('plugin')).getDirectoryHandle('data');
+          return await (await (await data.getFileHandle('config.json')).getFile()).text();
+        } catch {
+          return null;
+        }
+      }),
+    write: (text) =>
+      page.evaluate(async (text) => {
+        const data = await (await (await navigator.storage.getDirectory()).getDirectoryHandle('plugin')).getDirectoryHandle('data');
+        const w = await (await data.getFileHandle('config.json', { create: true })).createWritable();
+        await w.write(text);
+        await w.close();
+      }, text),
+    names: () =>
+      page.evaluate(async () => {
+        const data = await (await (await navigator.storage.getDirectory()).getDirectoryHandle('plugin')).getDirectoryHandle('data');
+        const out: string[] = [];
+        for await (const [name] of (data as unknown as { entries(): AsyncIterable<[string, unknown]> }).entries()) out.push(name);
+        return out.sort();
+      }),
+  };
+}
+
+/** Open the site with the stub pickers and switches installed, and a plugin folder in place. */
+export async function openSite(page: Page, opts: { config?: string | null; version?: string; direct?: boolean; install?: boolean } = {}): Promise<Sandbox> {
+  if (opts.direct !== false) await page.addInitScript(PICKERS);
+  else await page.addInitScript(() => {
+    const w = window as unknown as Record<string, unknown>;
+    delete w.showDirectoryPicker;
+    delete w.showOpenFilePicker;
+  });
+  await page.addInitScript(SWITCHES);
+  await page.goto('/');
+  const sandbox = sandboxFor(page);
+  if (opts.install !== false) await sandbox.install({ config: opts.config === undefined ? sampleConfig() : opts.config, version: opts.version ?? '0.5.0' });
+  return sandbox;
+}
+
+/** Welcome screen -> pick the folder -> Settings. */
+export async function pickPluginFolder(page: Page) {
+  await page.getByRole('button', { name: 'Выбрать папку плагина' }).click();
+  await expect(page.getByRole('heading', { name: 'Настройки', level: 1 })).toBeVisible();
 }
 
 /** Fails a test on any CSP violation or uncaught page error: they mean the build is broken under the strict CSP. */
@@ -107,12 +142,4 @@ export function watchPage(page: Page) {
   return problems;
 }
 
-export const test = base.extend<{ app: App }>({
-  // eslint-disable-next-line no-empty-pattern
-  app: async ({}, use) => {
-    const app = await startApp();
-    await use(app);
-    await app.stop();
-  },
-});
-export { expect };
+export { base as test, expect };

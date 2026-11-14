@@ -3,6 +3,7 @@
   import { ru } from '../i18n/ru.ts';
   import Banners from './components/Banners.svelte';
   import ConflictDialog from './components/ConflictDialog.svelte';
+  import FreshFileDialog from './components/FreshFileDialog.svelte';
   import Gate from './components/Gate.svelte';
   import HistoryDialog from './components/HistoryDialog.svelte';
   import SaveBar from './components/SaveBar.svelte';
@@ -10,8 +11,14 @@
   import Settings from './pages/Settings.svelte';
   import { session } from './state/app.svelte.ts';
 
+  // about every 10 s; the e2e build sets VITE_POLL_MS to something short so tests need not wait
+  const POLL_MS = Number(import.meta.env.VITE_POLL_MS) || 10_000;
+
   onMount(() => {
     void session.start();
+    // The plugin can save at any moment and a page cannot watch a file: look now and then while the tab is in view.
+    const timer = setInterval(() => document.visibilityState === 'visible' && void session.refreshIfChanged(), POLL_MS);
+    return () => clearInterval(timer);
   });
 
   const typing = (t: EventTarget | null) => t instanceof HTMLElement && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
@@ -62,3 +69,4 @@
 
 <HistoryDialog />
 <ConflictDialog />
+<FreshFileDialog />

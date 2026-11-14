@@ -13,7 +13,7 @@
   type ListKey = 'channels' | 'ignore_users' | 'protect_users';
 
   const cfg = $derived(session.current!);
-  const features = $derived(session.info?.features);
+  const features = $derived(session.source?.features);
 
   function setSeconds(key: SecondsKey, min: number, text: string) {
     const r = checkSeconds(text, min, MAX_SECONDS);

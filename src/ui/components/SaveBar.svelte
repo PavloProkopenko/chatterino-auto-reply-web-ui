@@ -13,6 +13,6 @@
     <button class="btn ghost icon-only" type="button" aria-label={ru.bar.undo} title="{ru.bar.undo} (Ctrl+Z)" disabled={!session.canUndo} onclick={() => session.undo()}><Icon name="undo" /></button>
     <button class="btn ghost icon-only" type="button" aria-label={ru.bar.redo} title="{ru.bar.redo} (Ctrl+Shift+Z)" disabled={!session.canRedo} onclick={() => session.redo()}><Icon name="redo" /></button>
     <button class="btn" type="button" disabled={!session.dirty} onclick={() => session.revert()}>{ru.bar.revert}</button>
-    <button class="btn primary" type="button" disabled={!session.canSave} onclick={() => void session.save()}>{session.saving ? ru.bar.saving : ru.bar.save}</button>
+    <button class="btn primary" type="button" disabled={!session.canSave} onclick={() => void session.save()}>{session.saving ? ru.bar.saving : session.source?.canSaveInPlace === false ? ru.bar.saveDownload : ru.bar.save}</button>
   </div>
 </div>

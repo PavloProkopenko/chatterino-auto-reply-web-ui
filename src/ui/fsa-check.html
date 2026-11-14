@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Проверка доступа к файлам (временная страница)</title>
+    <style>
+      body { margin: 24px auto; max-width: 820px; padding: 0 16px; background: #0f172a; color: #f8fafc; font: 15px/1.5 system-ui, sans-serif; }
+      button { margin: 4px 8px 4px 0; padding: 8px 14px; border: 1px solid #475569; border-radius: 6px; background: #272f42; color: inherit; font: inherit; cursor: pointer; }
+      button:disabled { opacity: 0.45; cursor: not-allowed; }
+      pre { min-height: 200px; padding: 12px; overflow: auto; background: #020617; border: 1px solid #334155; border-radius: 6px; white-space: pre-wrap; }
+      h2 { margin-top: 28px; font-size: 16px; }
+      .muted { color: #94a3b8; }
+    </style>
+  </head>
+  <body>
+    <h1>Проверка доступа к файлам плагина</h1>
+    <p class="muted">Временная страница для разработки: её нет в рабочей версии сайта. Ничего никуда не отправляется. Содержимое файлов не показывается, только размеры и результаты.</p>
+
+    <h2>1. Папка плагина</h2>
+    <p class="muted">Выберите папку самого плагина (внутри неё лежат <code>info.json</code> и папка <code>data</code>).</p>
+    <button id="pick-dir">Выбрать папку плагина</button>
+    <button id="write-tmp" disabled>Проверить запись: создать и удалить временный файл в data</button>
+    <button id="write-config" disabled>Проверить запись в config.json: записать тот же текст обратно</button>
+
+    <h2>2. Только файл</h2>
+    <button id="pick-file">Выбрать только config.json</button>
+    <button id="write-file" disabled>Проверить запись: записать тот же текст обратно</button>
+
+    <h2>3. Запоминание</h2>
+    <p class="muted">После выбора нажмите «Запомнить», потом перезагрузите страницу (Cmd/Ctrl+R) и посмотрите, что браузер говорит о разрешении.</p>
+    <button id="remember" disabled>Запомнить выбранное</button>
+    <button id="regrant" disabled>Запросить разрешение снова</button>
+
+    <h2>Результат</h2>
+    <button id="copy">Скопировать результат</button>
+    <pre id="out"></pre>
+    <script type="module" src="./fsa-check.ts"></script>
+  </body>
+</html>
