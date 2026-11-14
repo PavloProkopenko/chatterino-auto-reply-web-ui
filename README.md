@@ -24,6 +24,10 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm test:e2e
 
 `pnpm sync-plugin` copies the plugin's Lua modules from `../auto-reply-plugin` (or `$PLUGIN_REPO`) into `vendor/plugin/` and records hashes; the plugin repo is only read.
 
+## External plugin folder
+
+Browsers can't write into Leafyrino's app-data folder, so the plugin folder can be made a link to a folder you pick (for example in Documents). The site then opens that folder, edits `data/config.json`, and can install or update the plugin files in it (bundled with `pnpm sync-plugin`; a plugin release means re-vendor and redeploy). Two ways to create the link, with Leafyrino closed: the command the site shows (Plugin card), or `scripts/link-config.sh <folder>` (macOS/Linux) / `scripts/link-config.ps1 -Target <folder>` (Windows, untested), which also copies your current plugin folder (the original is kept in `auto-reply-backups` next to `Plugins`). Undo with `unlink-config.*`. See `docs/CONTRACT.md` §2.
+
 ## Deploy
 Vercel builds with `pnpm build` and serves `dist` (see `vercel.json`, which also sets the security headers; tests keep it in sync with the code). Nothing else is released or shipped.
 

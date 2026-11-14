@@ -95,6 +95,7 @@ export function makeWorkspace(first: Source | null = null): FakeWorkspace {
     persistent: () => true,
     start: async () => answers.start,
     pickFolder: async () => (calls.folder++, answers.pick),
+    pickPluginFolder: async () => ({ status: 'cancelled' as const }),
     pickFile: async () => (calls.file++, answers.pick),
     openFiles: async () => answers.pick,
     startDemo: () => (calls.demo++, answers.demo),

@@ -7,10 +7,17 @@
   import Gate from './components/Gate.svelte';
   import HistoryDialog from './components/HistoryDialog.svelte';
   import SaveBar from './components/SaveBar.svelte';
+  import TopBar from './components/TopBar.svelte';
   import Sidebar from './components/Sidebar.svelte';
+  import RedeemEditPage from './pages/RedeemEditPage.svelte';
+  import Redeems from './pages/Redeems.svelte';
+  import RuleEditPage from './pages/RuleEditPage.svelte';
   import Rules from './pages/Rules.svelte';
   import Settings from './pages/Settings.svelte';
-  import { nav, session } from './state/app.svelte.ts';
+  import TimerEditPage from './pages/TimerEditPage.svelte';
+  import Timers from './pages/Timers.svelte';
+  import { session } from './state/app.svelte.ts';
+  import { router } from './state/route.svelte.ts';
 
   // about every 10 s; the e2e build sets VITE_POLL_MS to something short so tests need not wait
   const POLL_MS = Number(import.meta.env.VITE_POLL_MS) || 10_000;
@@ -59,8 +66,14 @@
   <div class="shell">
     <Sidebar />
     <div class="main">
+      <TopBar />
       <Banners />
-      <main class="scroll" id="main" tabindex="-1">{#if nav.page === 'rules'}<Rules />{:else}<Settings />{/if}</main>
+      <main class="scroll" id="main" tabindex="-1">
+        {#if router.current.page === 'rules'}{#if router.current.view === 'edit'}<RuleEditPage id={router.current.id} />{:else}<Rules />{/if}
+        {:else if router.current.page === 'timers'}{#if router.current.view === 'edit'}<TimerEditPage id={router.current.id} />{:else}<Timers />{/if}
+        {:else if router.current.page === 'redeems'}{#if router.current.view === 'edit'}<RedeemEditPage id={router.current.id} />{:else}<Redeems />{/if}
+        {:else}<Settings />{/if}
+      </main>
       <SaveBar />
     </div>
   </div>

@@ -67,9 +67,9 @@ export async function previewRules(lua: Lua, rules: Rule[], input: PreviewInput)
 }
 
 /** A free, valid name for a rule, built from its reply; null when the reply gives nothing usable. */
-export async function suggestName(lua: Lua, others: Rule[], reply: string): Promise<string | null> {
+export async function suggestName(lua: Lua, others: { id: number; name?: unknown }[], reply: string, list: 'rules' | 'timers' | 'redeems' = 'rules'): Promise<string | null> {
   for (const candidate of nameCandidates(reply)) {
-    const [ok] = await lua.call('names', 'check', others, candidate, 'rules');
+    const [ok] = await lua.call('names', 'check', others, candidate, list);
     if (ok === true) return candidate;
   }
   return null;

@@ -123,6 +123,22 @@ export async function openSite(page: Page, opts: { config?: string | null; versi
   return sandbox;
 }
 
+/** Opens the notifications popup (top right) unless it is already open, and returns it. */
+export async function openNotices(page: Page) {
+  const bell = page.getByRole('button', { name: /^Уведомления/ });
+  if ((await bell.getAttribute('aria-expanded')) !== 'true') await bell.click();
+  const popup = page.getByRole('region', { name: 'Уведомления' });
+  await expect(popup).toBeVisible();
+  return popup;
+}
+
+/** Opens one welcome section by its title (the accordion keeps one open at a time). */
+export async function openSection(page: Page, title: string) {
+  const head = page.getByRole('button', { name: title });
+  if ((await head.getAttribute('aria-expanded')) !== 'true') await head.click();
+  await expect(head).toHaveAttribute('aria-expanded', 'true');
+}
+
 /** Welcome screen -> pick the folder -> Settings. */
 export async function pickPluginFolder(page: Page) {
   await page.getByRole('button', { name: 'Выбрать папку плагина' }).click();

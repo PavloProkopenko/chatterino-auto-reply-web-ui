@@ -52,7 +52,7 @@ test('create a rule: the constructor validates with the plugin, the new rule get
   await form.getByRole('button', { name: 'Готово' }).click();
   await expect(form.getByText('нужен непустой текст для поиска')).toBeVisible();
   await expect(form.getByText('нужен текст ответа')).toBeVisible();
-  await expect(rows(page)).toHaveCount(5);
+  await expect(page).toHaveURL(/#\/rules\/new$/); // an empty rule is refused: still on the editor page
 
   await form.getByLabel('Текст', { exact: true }).fill('пока');
   await form.getByLabel('Ответ', { exact: true }).fill('Пока, ');
@@ -173,7 +173,8 @@ test('search locks the order, and says why', async ({ page }) => {
 
 test('preview: the first matching rule wins, {user} is filled in, flags and channels count', async ({ page }) => {
   await openRules(page);
-  const msg = page.getByLabel('Сообщение в чате');
+  await page.getByRole('button', { name: 'Проверка', exact: true }).click();
+  const msg = page.getByRole('dialog').getByLabel('Сообщение в чате');
   await msg.fill('ПРИВЕТ всем');
   await page.getByLabel('Ник зрителя').fill('Вася');
   await expect(page.getByText('Ответит правило № 1')).toBeVisible();
@@ -192,21 +193,23 @@ test('preview in the constructor says whether the edited rule matches, and who b
   await openRules(page);
   await rows(page).nth(2).getByRole('button', { name: 'Изменить правило #3' }).click();
   const form = page.getByRole('region', { name: 'Правило #3' });
-  await form.getByRole('button', { name: 'Подставить пример для этого правила' }).click();
-  await expect(form.getByLabel('Сообщение в чате')).toHaveValue('донат');
-  await expect(form.getByText('подходит, но раньше сработает правило № 2')).toBeVisible();
-  await form.getByLabel('Сообщение в чате').fill('что-то другое');
-  await expect(form.getByText('не подходит под это сообщение')).toBeVisible();
+  await form.getByRole('button', { name: 'Проверка', exact: true }).click();
+  const dlg = page.getByRole('dialog');
+  await dlg.getByRole('button', { name: 'Подставить пример для этого правила' }).click();
+  await expect(dlg.getByLabel('Сообщение в чате')).toHaveValue('донат');
+  await expect(dlg.getByText('подходит, но раньше сработает правило № 2')).toBeVisible();
+  await dlg.getByLabel('Сообщение в чате').fill('что-то другое');
+  await expect(dlg.getByText('не подходит под это сообщение')).toBeVisible();
 });
 
 test('an old or unknown plugin version disables the settings it cannot use, and says why', async ({ page }) => {
   await openRules(page, { version: '0.2.0' });
+  await expect(rows(page).nth(1)).toContainText('Название нужно плагину 0.2.1 или новее');
   await rows(page).nth(0).getByRole('button', { name: 'Изменить правило #1' }).click();
   const form = page.getByRole('region', { name: 'Правило #1' });
   await expect(form.getByLabel('Название', { exact: true })).toBeDisabled();
   await expect(form.getByText('Нужна версия плагина 0.2.1 или новее.')).toBeVisible();
   await expect(form.getByText('Нужна версия плагина 0.5.0 или новее.')).toBeVisible();
-  await expect(rows(page).nth(1)).toContainText('Название нужно плагину 0.2.1 или новее');
 });
 
 test('an empty list offers the first rule', async ({ page }) => {
@@ -223,10 +226,15 @@ test('accessibility: the list, the bulk bar, the constructor, the confirmation; 
   expect(await scan()).toEqual([]);
   await rows(page).nth(1).getByRole('button', { name: 'Изменить правило donate' }).click();
   await expect(page.getByRole('region', { name: 'Правило donate' })).toBeVisible();
-  await page.getByLabel('Сообщение в чате').fill('донат');
+  expect(await scan()).toEqual([]);
+  await page.getByRole('region', { name: 'Правило donate' }).getByRole('button', { name: 'Проверка', exact: true }).click();
+  await page.getByRole('dialog').getByLabel('Сообщение в чате').fill('донат');
   await expect(page.getByText('Ответит правило № 2')).toBeVisible();
   expect(await scan()).toEqual([]);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.getByRole('region', { name: 'Правило donate' }).getByRole('button', { name: 'Готово' }).click();
+  await rows(page).nth(0).getByRole('checkbox').check(); // the selection does not survive a visit to the editor page
   await page.getByRole('toolbar').getByRole('button', { name: 'Удалить' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   expect(await scan()).toEqual([]);

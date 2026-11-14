@@ -2,6 +2,7 @@
   import { ru } from '../../i18n/ru.ts';
   import ChipList from '../components/ChipList.svelte';
   import NumberField from '../components/NumberField.svelte';
+  import PluginPanel from '../components/PluginPanel.svelte';
   import Switch from '../components/Switch.svelte';
   import { session, validateChannel, validateUser } from '../state/app.svelte.ts';
   import { checkSeconds } from '../state/validators.ts';
@@ -76,4 +77,8 @@
     <Switch label={ru.settings.redeems.backfire} help={ru.settings.redeems.backfireHelp} checked={cfg.backfire} onchange={(v) => setSwitch('backfire', v)} />
     <ChipList label={ru.settings.lists.protect} help={ru.settings.lists.protectHelp} placeholder={ru.settings.lists.usersPlaceholder} items={cfg.protect_users} validate={validateUser} onchange={(v) => setList('protect_users', v)} />
   </section>
+
+  {#if session.pluginFolder}
+    <PluginPanel folder={session.pluginFolder} mode="settings" onchanged={() => session.refreshPluginInfo()} />
+  {/if}
 </div>

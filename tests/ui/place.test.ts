@@ -38,3 +38,28 @@ describe('pluginsDir', () => {
     expect(pluginsDir('other')).toBe('~/.local/share/chatterino/Plugins/');
   });
 });
+
+import { linkCommand } from '../../src/ui/state/place.ts';
+
+describe('linkCommand', () => {
+  test('macOS and Linux: link under Plugins, never into an existing folder', () => {
+    const r = linkCommand('mac', '~/Documents/auto-reply-plugin', '~/Library/Application Support/chatterino/Plugins/');
+    expect(r).toEqual({
+      ok: true,
+      command: 'test ! -e "$HOME/Library/Application Support/chatterino/Plugins/auto-reply" && ln -s "$HOME/Documents/auto-reply-plugin" "$HOME/Library/Application Support/chatterino/Plugins/auto-reply" || echo "Already exists: $HOME/Library/Application Support/chatterino/Plugins/auto-reply"',
+    });
+  });
+  test('Windows: junction, checked first', () => {
+    const r = linkCommand('win', 'D:\\auto reply', '%APPDATA%\\Chatterino2\\Plugins\\');
+    expect(r).toEqual({ ok: true, command: 'if exist "%APPDATA%\\Chatterino2\\Plugins\\auto-reply" (echo Already exists: auto-reply) else mklink /J "%APPDATA%\\Chatterino2\\Plugins\\auto-reply" "D:\\auto reply"' });
+  });
+  test('empty and unsafe input is refused, not escaped', () => {
+    expect(linkCommand('mac', '', '/p')).toEqual({ ok: false, problem: 'folder-empty' });
+    expect(linkCommand('mac', '/x', '  ')).toEqual({ ok: false, problem: 'plugins-empty' });
+    expect(linkCommand('mac', '/x"; rm -rf ~; "', '/p')).toEqual({ ok: false, problem: 'folder-unsafe' });
+    expect(linkCommand('mac', '/x/$(id)', '/p')).toEqual({ ok: false, problem: 'folder-unsafe' });
+    expect(linkCommand('other', '/x', '/p`id`')).toEqual({ ok: false, problem: 'plugins-unsafe' });
+    expect(linkCommand('win', 'D:\\a" & calc & "', 'C:\\p')).toEqual({ ok: false, problem: 'folder-unsafe' });
+    expect(linkCommand('win', 'D:\\%TEMP%\\x', 'C:\\p')).toEqual({ ok: false, problem: 'folder-unsafe' });
+  });
+});

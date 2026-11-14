@@ -1,9 +1,9 @@
 import { demoConfigText } from '../../shared/demo.ts';
 import { featuresFor, type Features } from '../../shared/features.ts';
 import { InMemoryBackups } from './backups.ts';
-import { BlockedPickError, directAccessSupported, fileConfigAccess, folderConfigAccess, permissionOf, pickConfigFile, pickFolder, readPluginInfo } from './fs-access.ts';
+import { BlockedPickError, directAccessSupported, fileConfigAccess, folderConfigAccess, folderPluginDir, permissionOf, pickConfigFile, pickFolder, readPluginInfo } from './fs-access.ts';
 import type { Persistence, RememberedSource } from './persistence.ts';
-import type { FileAccess, FileRead } from './ports.ts';
+import type { FileAccess, FileRead, PluginDir } from './ports.ts';
 import { createConfigStore, type ConfigStore } from './store.ts';
 
 export type SourceKind = 'folder' | 'file' | 'upload' | 'demo';
@@ -22,6 +22,11 @@ export interface SourceInfo {
   /** Name of the plugin folder when it is known (used in the "put the file back" command). */
   folderName: string | null;
 }
+/** A folder whose plugin files the site can inspect, install and update. */
+export interface PluginFolder {
+  name: string;
+  dir: PluginDir;
+}
 export type ReplaceResult = { status: 'replaced' } | { status: 'unreadable' };
 export type InfoResult = { status: 'applied' } | { status: 'not-plugin' } | { status: 'unreadable' };
 export interface Source extends SourceInfo {
@@ -32,7 +37,21 @@ export interface Source extends SourceInfo {
   applyInfo?(file: File): Promise<InfoResult>;
   /** Ask the browser again for permission to this source (needs a user gesture). True when granted. */
   reauthorize(): Promise<boolean>;
+  /** Folder sources only: the plugin's files, for install/update. */
+  plugin?: PluginFolder;
+  /** Folder sources only: read info.json again (after an install or update) and refresh version and features. */
+  refreshInfo?(): Promise<void>;
 }
+
+export type PickInstallResult =
+  | {
+      status: 'picked';
+      plugin: PluginFolder;
+      /** After an install: remember this folder and open its config as the editing source (null when it is not the plugin). */
+      adopt(): Promise<Source | null>;
+    }
+  | { status: 'cancelled' }
+  | { status: 'blocked' };
 
 export type PickResult =
   | { status: 'picked'; source: Source }
@@ -58,6 +77,8 @@ export interface Workspace {
   /** Reopen what was chosen last time, if anything. */
   start(): Promise<StartResult>;
   pickFolder(): Promise<PickResult>;
+  /** Any folder (empty or holding the plugin) for installing or updating the plugin there; nothing is remembered until `adopt`. */
+  pickPluginFolder(): Promise<PickInstallResult>;
   pickFile(): Promise<PickResult>;
   /** Fallback for browsers without direct access: files from an `<input>` (a folder or just config.json). */
   openFiles(files: File[]): Promise<PickResult>;
@@ -123,7 +144,15 @@ export function createWorkspace(deps: WorkspaceDeps): Workspace {
     const info = await readPluginInfo(handle);
     if (!info || info.name !== PLUGIN_NAME) return { notPlugin: handle.name };
     const store = createConfigStore({ file: folderConfigAccess(handle), backups: persistence.backups(id), ...storeOpts });
-    return { kind: 'folder', name: handle.name, pluginVersion: info.version, features: featuresFor(info.version), canSaveInPlace: true, needsFreshFile: false, folderName: handle.name, store, reauthorize: async () => (await permissionOf(handle, true)) === 'granted' };
+    const source: Source = { kind: 'folder', name: handle.name, pluginVersion: info.version, features: featuresFor(info.version), canSaveInPlace: true, needsFreshFile: false, folderName: handle.name, store, reauthorize: async () => (await permissionOf(handle, true)) === 'granted', plugin: { name: handle.name, dir: folderPluginDir(handle) } };
+    source.refreshInfo = async () => {
+      const fresh = await readPluginInfo(handle);
+      if (fresh && fresh.name === PLUGIN_NAME) {
+        source.pluginVersion = fresh.version;
+        source.features = featuresFor(fresh.version);
+      }
+    };
+    return source;
   }
   function fileSource(handle: FileSystemFileHandle, id: string): Source {
     const store = createConfigStore({ file: fileConfigAccess(handle), backups: persistence.backups(id), ...storeOpts });
@@ -216,6 +245,29 @@ export function createWorkspace(deps: WorkspaceDeps): Workspace {
       if ('notPlugin' in source) return { status: 'not-plugin' as const, name: source.notPlugin };
       await remember({ id, kind: 'folder', handle, name: handle.name });
       return { status: 'picked' as const, source };
+    },
+
+    async pickPluginFolder() {
+      let handle: FileSystemDirectoryHandle | null;
+      try {
+        handle = await pickFolder(deps.pickers);
+      } catch (e) {
+        if (e instanceof BlockedPickError) return { status: 'blocked' as const };
+        throw e;
+      }
+      if (!handle) return { status: 'cancelled' as const };
+      const picked = handle;
+      return {
+        status: 'picked' as const,
+        plugin: { name: picked.name, dir: folderPluginDir(picked) },
+        async adopt() {
+          const id = crypto.randomUUID();
+          const source = await folderSource(picked, id);
+          if ('notPlugin' in source) return null;
+          await remember({ id, kind: 'folder', handle: picked, name: picked.name });
+          return source;
+        },
+      };
     },
 
     async pickFile() {

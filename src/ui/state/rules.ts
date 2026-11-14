@@ -1,5 +1,6 @@
 import type { Condition, Config, Rule } from '../../shared/config.ts';
-import { addRule, moveItem, removeItem } from '../../shared/ids.ts';
+import { addRule } from '../../shared/ids.ts';
+import { deleteItems, moveStep, moveTo } from './lists.ts';
 
 /** A rule's fields as the constructor edits them (`Omit<Rule, 'id'>` would erase the property types behind its index signature). */
 export interface RuleFields {
@@ -39,24 +40,13 @@ export function saveRule(cfg: Config, rule: RuleDraft): number {
 }
 
 /** Removes rules; the counter stays, so their ids are never handed out again. Returns how many were removed. */
-export function deleteRules(cfg: Config, ids: number[]): number {
-  return ids.reduce((n, id) => n + (removeItem(cfg, 'rules', id) ? 1 : 0), 0);
-}
+export const deleteRules = (cfg: Config, ids: number[]): number => deleteItems(cfg, 'rules', ids);
 
 /** One step up (-1) or down (+1); list order is priority. */
-export function moveRule(cfg: Config, id: number, delta: -1 | 1): void {
-  const from = cfg.rules.findIndex((r) => r.id === id);
-  if (from < 0) return;
-  moveItem(cfg.rules, from, Math.max(0, Math.min(from + delta, cfg.rules.length - 1)));
-}
+export const moveRule = (cfg: Config, id: number, delta: -1 | 1): void => moveStep(cfg, 'rules', id, delta);
 
 /** Drag and drop: the rule takes the place of the row it was dropped on (after it when moving down, before it when moving up). */
-export function moveRuleTo(cfg: Config, id: number, targetId: number): void {
-  const from = cfg.rules.findIndex((r) => r.id === id);
-  const to = cfg.rules.findIndex((r) => r.id === targetId);
-  if (from < 0 || to < 0 || from === to) return;
-  moveItem(cfg.rules, from, to);
-}
+export const moveRuleTo = (cfg: Config, id: number, targetId: number): void => moveTo(cfg, 'rules', id, targetId);
 
 /** The chosen rules go to the top or bottom, keeping their order among themselves. */
 export function moveToEdge(cfg: Config, ids: number[], edge: 'top' | 'bottom'): void {

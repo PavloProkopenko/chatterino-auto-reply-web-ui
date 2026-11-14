@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { DEV, expect, openSite, pickPluginFolder, sampleConfig, test } from './harness.ts';
+import { DEV, expect, openNotices, openSection, openSite, pickPluginFolder, sampleConfig, test } from './harness.ts';
 
 const field = (page: import('@playwright/test').Page, label: string) => page.getByLabel(label, { exact: true });
 const save = (page: import('@playwright/test').Page) => page.getByRole('button', { name: /^Сохранить/ }).last();
@@ -95,14 +95,17 @@ test('while the page is open, a plugin save is noticed: silently when clean, wit
   await field(page, 'Минимум между любыми ответами').fill('9');
   plugin.per_rule_cooldown = 44;
   await sandbox.write(JSON.stringify(plugin, null, 2) + '\n');
+  await openNotices(page);
   await expect(page.getByText('Плагин сохранил файл, пока вы редактировали')).toBeVisible();
   await expect(field(page, 'Минимум между любыми ответами')).toHaveValue('9'); // edits are kept
 });
 
 test('demo mode: an in-memory sample, saving downloads a file, nothing is remembered', async ({ page }) => {
   await openSite(page, { install: false });
-  await page.getByRole('button', { name: 'Попробовать на примере' }).click();
+  await openSection(page, 'Попробовать на примере');
+  await page.getByRole('button', { name: 'Открыть пример' }).click();
   await expect(page.getByRole('heading', { name: 'Настройки', level: 1 })).toBeVisible();
+  await openNotices(page);
   await expect(page.getByText('Это пример: ничего не читается')).toBeVisible();
   await expect(page.locator('.file-box')).toContainText('Пример');
   await field(page, 'Пауза для одного зрителя').fill('15');
@@ -124,6 +127,7 @@ test('browsers without direct access: open the plugin folder, edit, download the
     await writeFile(join(dir, 'auto-reply', 'data', 'config.json'), sampleConfig());
     await page.locator('input[type=file][webkitdirectory]').setInputFiles(join(dir, 'auto-reply'));
     await expect(page.getByRole('heading', { name: 'Настройки', level: 1 })).toBeVisible();
+    await openNotices(page);
     await expect(page.getByText('Сайт не может менять файл сам')).toBeVisible();
     await expect(page.getByText('Плагин 0.5.0')).toBeVisible();
     await field(page, 'Пауза для одного зрителя').fill('20');
@@ -146,7 +150,8 @@ test('browsers without direct access: open the plugin folder, edit, download the
 test('the dev server (pnpm dev) renders the app: a route or proxy rule must not swallow a source file', async ({ page }) => {
   await page.goto(DEV + '/');
   await expect(page.getByRole('heading', { name: 'С чего начнём?' })).toBeVisible();
-  await page.getByRole('button', { name: 'Попробовать на примере' }).click();
+  await openSection(page, 'Попробовать на примере');
+  await page.getByRole('button', { name: 'Открыть пример' }).click();
   await expect(page.getByRole('heading', { name: 'Настройки', level: 1 })).toBeVisible();
 });
 
@@ -186,7 +191,7 @@ test('Chrome refusing a system folder: the message points to the always-working 
   });
   await page.getByRole('button', { name: 'Выбрать папку плагина напрямую' }).click();
   await expect(page.getByRole('alert')).toContainText('системные папки');
-  await expect(page.getByRole('button', { name: 'Попробовать на примере' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Открыть config.json (любой браузер)' })).toBeVisible();
 });
 
 test('only config.json opened: new settings are off until info.json is opened too', async ({ page }) => {
@@ -197,10 +202,12 @@ test('only config.json opened: new settings are off until info.json is opened to
     await writeFile(config, sampleConfig());
     await page.locator('input[type=file]:not([webkitdirectory])').setInputFiles(config);
     await expect(page.getByRole('heading', { name: 'Настройки', level: 1 })).toBeVisible();
+    await openNotices(page);
     await expect(page.getByText('Версия плагина неизвестна, поэтому')).toBeVisible();
     await field(page, 'Пауза для одного зрителя').fill('21'); // basic settings work without the version
     const other = join(dir, 'other.json');
     await writeFile(other, JSON.stringify({ name: 'Something Else', version: '9.9.9' }));
+    await openNotices(page);
     await page.getByLabel('Открыть info.json').setInputFiles(other);
     await expect(page.getByText('Это файл другого плагина')).toBeVisible();
     const info = join(dir, 'info.json');

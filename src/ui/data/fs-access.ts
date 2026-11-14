@@ -1,4 +1,4 @@
-import { FileWriteError, type FileAccess, type FileRead } from './ports.ts';
+import { FileWriteError, type FileAccess, type FileRead, type PluginDir } from './ports.ts';
 
 // File System Access API (Chrome, Edge, Opera). The TypeScript DOM lib lacks the pickers and the permission calls,
 // so they are declared here. All file content stays in the browser: nothing in this module touches the network.
@@ -146,4 +146,61 @@ export async function readPluginInfo(plugin: FileSystemDirectoryHandle): Promise
   } catch {
     return null;
   }
+}
+
+interface DirWithValues {
+  values(): AsyncIterable<FileSystemHandle>;
+}
+
+/** A picked folder as the plugin installer sees it: relative "a/b.txt" paths, parents created on write. */
+export function folderPluginDir(root: FileSystemDirectoryHandle): PluginDir {
+  async function dirAt(path: string, create: boolean): Promise<FileSystemDirectoryHandle | null> {
+    let cur = root;
+    for (const part of path.split('/').filter(Boolean)) {
+      try {
+        cur = await cur.getDirectoryHandle(part, { create });
+      } catch (e) {
+        if (!create && isNotFound(e)) return null;
+        throw e;
+      }
+    }
+    return cur;
+  }
+  const split = (path: string): [string, string] => {
+    const i = path.lastIndexOf('/');
+    return i === -1 ? ['', path] : [path.slice(0, i), path.slice(i + 1)];
+  };
+  return {
+    async list(path) {
+      const dir = await dirAt(path, false);
+      if (!dir) return null;
+      const out: { name: string; kind: 'file' | 'directory' }[] = [];
+      for await (const h of (dir as unknown as DirWithValues).values()) out.push({ name: h.name, kind: h.kind });
+      return out;
+    },
+    async read(path) {
+      const [dir, name] = split(path);
+      try {
+        const d = await dirAt(dir, false);
+        return d ? await (await (await d.getFileHandle(name)).getFile()).text() : null;
+      } catch (e) {
+        if (isNotFound(e)) return null;
+        throw e;
+      }
+    },
+    async write(path, text) {
+      const [dir, name] = split(path);
+      const d = await dirAt(dir, true);
+      const handle = await d!.getFileHandle(name, { create: true });
+      let stream: FileSystemWritableFileStream | undefined;
+      try {
+        stream = await handle.createWritable();
+        await stream.write(text);
+        await stream.close();
+      } catch (e) {
+        if (stream) await stream.abort().catch(() => undefined);
+        throw mapWriteError(e);
+      }
+    },
+  };
 }

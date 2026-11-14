@@ -1,9 +1,10 @@
 import { deepEqual, type Config } from '../../shared/config.ts';
 import { mergeConfigs, type Conflict, type MergeNote, type Resolutions } from '../../shared/merge.ts';
 import { PermissionNeededError } from '../data/fs-access.ts';
+import { resetPreview } from './preview-state.svelte.ts';
 import type { BackupInfo, WriteFailure } from '../data/ports.ts';
 import type { LoadResult, SaveResult, Snapshot } from '../data/store.ts';
-import type { PickResult, Source, SourceInfo, Workspace } from '../data/workspace.ts';
+import type { PluginFolder, PickResult, Source, SourceInfo, Workspace } from '../data/workspace.ts';
 
 export type Phase = 'loading' | 'welcome' | 'needs-permission' | 'missing' | 'invalid' | 'ready';
 export type PickProblem = 'blocked' | 'not-plugin' | 'bad-selection';
@@ -30,6 +31,11 @@ export class Session {
   /** For the "continue with the remembered folder" screen. */
   remembered = $state.raw<{ name: string; kind: 'folder' | 'file' } | null>(null);
   source = $state.raw<SourceInfo | null>(null);
+  /** The open folder's plugin files (folder sources only): what the Plugin card installs and updates. */
+  pluginFolder = $state.raw<PluginFolder | null>(null);
+  /** A folder picked on the welcome screen to install the plugin into. */
+  installTarget = $state.raw<{ plugin: PluginFolder; adopt: () => Promise<Source | null> } | null>(null);
+  installBlocked = $state(false);
   /** False when a save will re-lay-out the file (it was not in the style the app writes). */
   exact = $state(true);
   invalid = $state.raw<{ error: string; text: string } | null>(null);
@@ -98,6 +104,36 @@ export class Session {
   pickFolder = () => this.#pick(() => this.#ws.pickFolder());
   pickFile = () => this.#pick(() => this.#ws.pickFile());
   openFiles = (files: File[]) => this.#pick(() => this.#ws.openFiles(files));
+
+  /** Welcome screen: choose the folder the plugin should be installed into. */
+  async pickInstallFolder(): Promise<void> {
+    await this.#guard(async () => {
+      const r = await this.#ws.pickPluginFolder();
+      this.installBlocked = r.status === 'blocked';
+      if (r.status === 'picked') this.installTarget = { plugin: r.plugin, adopt: r.adopt };
+    });
+  }
+  cancelInstall(): void {
+    this.installTarget = null;
+    this.installBlocked = false;
+  }
+  /** After an install: continue with that folder's config. */
+  async adoptInstallTarget(): Promise<void> {
+    const target = this.installTarget;
+    if (!target) return;
+    await this.#guard(async () => {
+      const source = await target.adopt();
+      this.installTarget = null;
+      if (source) await this.#open(source);
+    });
+  }
+  /** After an install or update in the open folder: version and features come from the new info.json. */
+  async refreshPluginInfo(): Promise<void> {
+    const source = this.#source;
+    if (!source?.refreshInfo || !this.source) return;
+    await source.refreshInfo();
+    this.source = { ...this.source, pluginVersion: source.pluginVersion, features: source.features };
+  }
   async startDemo(): Promise<void> {
     await this.#guard(async () => this.#open(this.#ws.startDemo()));
   }
@@ -124,6 +160,10 @@ export class Session {
     if (forget) await this.#ws.forget();
     this.#source = null;
     this.source = null;
+    this.pluginFolder = null;
+    resetPreview();
+    this.installTarget = null;
+    this.installBlocked = false;
     this.base = this.current = null;
     this.#hash = null;
     this.#stat = null;
@@ -351,6 +391,7 @@ export class Session {
 
   async #open(source: Source): Promise<void> {
     this.#source = source;
+    this.pluginFolder = source.plugin ?? null;
     this.#fresh = false;
     this.askFreshFile = false;
     this.freshProblem = null;

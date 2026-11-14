@@ -12,3 +12,13 @@ export function enableTimerNow(cfg: Config, id: number, nowSeconds: number): { o
   delete timer.game_id;
   return { ok: true };
 }
+
+/** The UI's other allowed change to live state: stop, like the plugin's `set_timer_enabled(t, false)`. */
+export function disableTimer(cfg: Config, id: number): { ok: true } | { ok: false; error: string } {
+  const timer = cfg.timers.find((t) => t.id === id);
+  if (!timer) return { ok: false, error: `timer ${id} not found` };
+  timer.enabled = false;
+  delete timer.started_at;
+  delete timer.game_id;
+  return { ok: true };
+}

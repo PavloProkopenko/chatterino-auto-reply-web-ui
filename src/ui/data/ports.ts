@@ -47,3 +47,12 @@ export interface BackupStore {
   /** Keep only the newest `keep` backups. */
   prune(keep: number): Promise<void>;
 }
+
+/** A folder as the plugin installer sees it. Paths are relative with "/" separators; writes create parent folders. */
+export interface PluginDir {
+  /** Entries of a folder, or null when the folder does not exist ("" is the root). */
+  list(path: string): Promise<{ name: string; kind: 'file' | 'directory' }[] | null>;
+  /** A file's text, or null when it does not exist. */
+  read(path: string): Promise<string | null>;
+  write(path: string, text: string): Promise<void>;
+}

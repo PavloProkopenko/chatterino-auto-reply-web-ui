@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
-import { expect, openSite, pickPluginFolder, sampleConfig, test } from './harness.ts';
+import { expect, openNotices, openSite, pickPluginFolder, sampleConfig, test } from './harness.ts';
 
 const scan = async (page: Page) =>
   (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()).violations.map((v) => `${v.id}: ${v.help} (${v.nodes.map((n) => n.target.join(' ')).join(' | ')})`);
@@ -52,6 +52,8 @@ test('accessibility of the permission, fallback, demo and failure screens', asyn
   await expect(fallback.getByText('Открыть config.json').first()).toBeVisible();
   expect(await scan(fallback)).toEqual([]);
   await fallback.getByRole('button', { name: 'Попробовать на примере' }).click();
+  await fallback.getByRole('button', { name: 'Открыть пример' }).click();
+  await openNotices(fallback);
   await expect(fallback.getByText('Это пример: ничего не читается')).toBeVisible();
   expect(await scan(fallback)).toEqual([]);
 });
@@ -59,6 +61,7 @@ test('accessibility of the permission, fallback, demo and failure screens', asyn
 test('accessibility of the download flow: the re-open dialog and the "put the file back" banner', async ({ page }) => {
   await openSite(page, { install: false });
   await page.locator('input[type=file]:not([webkitdirectory])').setInputFiles({ name: 'config.json', mimeType: 'application/json', buffer: Buffer.from(sampleConfig()) });
+  await openNotices(page);
   await expect(page.getByText('Версия плагина неизвестна, поэтому')).toBeVisible();
   expect(await scan(page)).toEqual([]);
   await page.getByLabel('Пауза для одного зрителя', { exact: true }).fill('45');

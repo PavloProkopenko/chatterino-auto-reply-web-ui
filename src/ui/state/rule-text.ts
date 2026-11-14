@@ -27,7 +27,7 @@ export function describeCondition(c: Condition): string {
   }
 }
 
-export const describeConditions = (rule: Rule): string => rule.conditions.map(describeCondition).join(T.describe.and);
+export const describeConditions = (rule: { conditions: Condition[] }): string => rule.conditions.map(describeCondition).join(T.describe.and);
 
 /** The name when there is one, else the id as the plugin's chat commands write it. */
 export const ruleLabel = (rule: Pick<Rule, 'id' | 'name'>): string => (typeof rule.name === 'string' && rule.name !== '' ? rule.name : `#${rule.id}`);
