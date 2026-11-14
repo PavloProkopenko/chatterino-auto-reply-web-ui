@@ -1,10 +1,10 @@
 <script lang="ts">
   import { ru } from '../../i18n/ru.ts';
-  import { nav, session } from '../state/app.svelte.ts';
+  import { nav, session, type Page } from '../state/app.svelte.ts';
   import Icon, { type IconName } from './Icon.svelte';
 
   const items: { id: string; label: string; icon: IconName; ready: boolean }[] = [
-    { id: 'rules', label: ru.nav.rules, icon: 'rules', ready: false },
+    { id: 'rules', label: ru.nav.rules, icon: 'rules', ready: true },
     { id: 'timers', label: ru.nav.timers, icon: 'timer', ready: false },
     { id: 'redeems', label: ru.nav.redeems, icon: 'reward', ready: false },
     { id: 'settings', label: ru.nav.settings, icon: 'settings', ready: true },
@@ -20,7 +20,7 @@
   <nav class="nav" aria-label={ru.nav.label}>
     {#each items as item (item.id)}
       {#if item.ready}
-        <button class="nav-item" type="button" aria-current="page"><Icon name={item.icon} /><span class="grow">{item.label}</span></button>
+        <button class="nav-item" type="button" aria-current={nav.page === item.id ? 'page' : undefined} onclick={() => (nav.page = item.id as Page)}><Icon name={item.icon} /><span class="grow">{item.label}</span></button>
       {:else}
         <button class="nav-item" type="button" aria-disabled="true" onclick={(e) => e.preventDefault()}>
           <Icon name={item.icon} /><span class="grow">{item.label}</span><span class="badge">{ru.nav.soon}</span>

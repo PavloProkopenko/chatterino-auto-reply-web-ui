@@ -8,8 +8,9 @@
   import HistoryDialog from './components/HistoryDialog.svelte';
   import SaveBar from './components/SaveBar.svelte';
   import Sidebar from './components/Sidebar.svelte';
+  import Rules from './pages/Rules.svelte';
   import Settings from './pages/Settings.svelte';
-  import { session } from './state/app.svelte.ts';
+  import { nav, session } from './state/app.svelte.ts';
 
   // about every 10 s; the e2e build sets VITE_POLL_MS to something short so tests need not wait
   const POLL_MS = Number(import.meta.env.VITE_POLL_MS) || 10_000;
@@ -59,7 +60,7 @@
     <Sidebar />
     <div class="main">
       <Banners />
-      <main class="scroll" id="main" tabindex="-1"><Settings /></main>
+      <main class="scroll" id="main" tabindex="-1">{#if nav.page === 'rules'}<Rules />{:else}<Settings />{/if}</main>
       <SaveBar />
     </div>
   </div>
