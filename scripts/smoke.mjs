@@ -59,7 +59,7 @@ try {
   check('missing token rejected', (await call('/api/discover', { auth: false })).status === 403);
   const discovered = JSON.parse((await call('/api/discover')).text);
   check('synthetic config discovered', discovered.candidates?.[0]?.configPath === configPath);
-  check('config locked until confirmed', (await call('/api/config')).status === 409);
+  check('config locked until confirmed', JSON.parse((await call('/api/config')).text).status === 'no-config-selected');
   check('select confirms the path', (await call('/api/config/select', { method: 'POST', body: { path: configPath } })).status === 200);
   const loaded = JSON.parse((await call('/api/config')).text);
   check('config loads', loaded.status === 'ok' && loaded.config.rules[0].reply === 'один');

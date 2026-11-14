@@ -303,3 +303,20 @@ describe('backups: list and restore', () => {
     expect(await read()).toBe(text);
   });
 });
+
+describe('after a conflict', () => {
+  test("the plugin's version is a valid base for the next save (the UI re-saves after the user's choices)", async () => {
+    await writeFile(file, fixture());
+    const l = await loaded();
+    const pluginSaved = JSON.parse(fixture());
+    pluginSaved.rules[1].reply = 'плагин';
+    await writeFile(file, JSON.stringify(pluginSaved, null, 2) + '\n');
+    const first = await store.save(file, l.snapshot.hash, edit(l.config, (c) => (c.rules[1]!.reply = 'я')));
+    expect(first.status).toBe('conflict');
+    if (first.status !== 'conflict') return;
+    // a fresh store instance would not know the hash, so use the same one: it must have remembered it
+    const second = await store.save(file, first.snapshot.hash, edit(first.theirs, (c) => (c.rules[1]!.reply = 'я')));
+    expect(second.status).toBe('saved');
+    expect(JSON.parse(await read()).rules[1].reply).toBe('я');
+  });
+});

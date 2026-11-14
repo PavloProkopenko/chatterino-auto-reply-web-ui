@@ -1,6 +1,6 @@
 # Auto Reply Web
 
-A local web UI for the **Auto Reply** plugin for Leafyrino (a Chatterino fork). It edits the plugin's `data/config.json`; the plugin keeps working without this app. UI language: Russian. Status: Phase 1 (core server and library) done, no UI yet. See `PLAN.md`, `docs/CONTRACT.md` and `docs/adr/`.
+A local web UI for the **Auto Reply** plugin for Leafyrino (a Chatterino fork). It edits the plugin's `data/config.json`; the plugin keeps working without this app. UI language: Russian. Status: Phase 2 done (Settings page); Rules, Timers and Redeems pages come next. See `PLAN.md`, `docs/CONTRACT.md` and `docs/adr/`.
 
 ## Develop
 
@@ -9,10 +9,12 @@ Needs `curl`, `tar` (macOS) or PowerShell 5+ (Windows). No admin rights, nothing
 ```sh
 scripts/prepare.sh            # macOS: portable Node + pnpm in .tools/, install, lint, tests, vendor check, build smoke
 scripts/prepare.sh --check    # only report what is missing
+scripts/prepare.sh --no-e2e   # skip the browser download and the Playwright run
 ```
 ```powershell
 scripts\prepare.ps1           # Windows
 scripts\prepare.ps1 -Check
+scripts\prepare.ps1 -NoE2E
 ```
 
 Afterwards (the script prints the exact line):

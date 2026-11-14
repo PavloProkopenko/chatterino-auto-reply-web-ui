@@ -4,6 +4,7 @@
 #   scripts/prepare.sh            do everything
 #   scripts/prepare.sh --check    only report what is missing
 #   scripts/prepare.sh --ci       same as default (the script never prompts)
+#   scripts/prepare.sh --no-e2e   skip the browser install and the Playwright run (about a minute)
 set -euo pipefail
 
 NODE_VERSION="22.17.0"
@@ -13,6 +14,7 @@ SHA_darwin_x64="c39c8ec3cdadedfcc75de0cb3305df95ae2aecebc5db8d68a9b67bd74616d2ad
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TOOLS="$ROOT/.tools"
 CHECK=0; [[ "${1:-}" == "--check" ]] && CHECK=1
+E2E=1; for a in "$@"; do [[ "$a" == "--no-e2e" ]] && E2E=0; done
 PNPM_VERSION="$(sed -n 's/.*"packageManager": "pnpm@\([^"]*\)".*/\1/p' "$ROOT/package.json")"
 missing=()
 
@@ -47,6 +49,7 @@ if [[ ! -x "$PNPM" || "$("$PNPM" --version 2>/dev/null || true)" != "$PNPM_VERSI
 fi
 
 [[ -d "$ROOT/node_modules" ]] || missing+=("dependencies (pnpm install)")
+[[ $E2E -eq 0 || -d "$TOOLS/browsers" ]] || missing+=("Playwright browser in .tools (run without --no-e2e)")
 if [[ $CHECK -eq 1 ]]; then
   if ((${#missing[@]})); then printf 'Missing:\n  - %s\n' "${missing[@]}"; exit 1; fi
   echo "Everything is in place."; exit 0
@@ -59,5 +62,10 @@ cd "$ROOT"
 "$PNPM" test
 "$PNPM" sync-plugin:check
 "$PNPM" build:smoke
+if [[ $E2E -eq 1 ]]; then
+  export PLAYWRIGHT_BROWSERS_PATH="$TOOLS/browsers"
+  "$PNPM" exec playwright install chromium
+  "$PNPM" test:e2e
+fi
 echo
 echo "Ready. Use:  export PATH=\"$TOOLS/node/bin:$TOOLS/pnpm/node_modules/.bin:\$PATH\"  then  pnpm test"

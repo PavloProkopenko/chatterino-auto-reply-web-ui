@@ -139,7 +139,10 @@ export function createStore(opts: StoreOptions = {}): Store {
         const baseDoc = baseText === undefined ? null : parseDoc(baseText);
         if (!baseDoc?.ok) return { status: 'stale-base' };
         const m = mergeConfigs(normalise(baseDoc.doc.base), normalise(parsed.doc.base), edit);
-        if (!m.ok) return { status: 'conflict', conflicts: m.conflicts, theirs: m.theirs, snapshot: cur.snapshot };
+        if (!m.ok) {
+          remember(cur.snapshot.hash, cur.text); // the UI will re-save against this version after the user's choices
+          return { status: 'conflict', conflicts: m.conflicts, theirs: m.theirs, snapshot: cur.snapshot };
+        }
         result = m.config;
         notes = m.notes;
       }

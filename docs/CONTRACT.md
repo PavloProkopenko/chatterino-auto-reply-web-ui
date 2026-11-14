@@ -34,6 +34,9 @@ Condition `type`: `keyword` (substring), `word` (whole word/phrase), `anyword` (
 - Matching semantics: custom Unicode lower-casing (Latin + Cyrillic incl. Ukrainian); word characters are ASCII letters, digits, `_` and every byte >= 128 (so `играет2` is not `играет`); `mention` needs the account login.
 - Chat-side limits worth surfacing: send rate limiting drops fast messages; replies are sent with `execute_commands=false`; per-user/per-rule cooldowns and `global_min_gap` apply; a rule bound to a channel that is not in `channels` is dormant.
 
+## 4a. Number ranges for settings
+`per_user_cooldown`, `per_rule_cooldown`, `global_min_gap`: whole seconds 0..86400, and `global_min_gap` at least 1 ("Twitch limits"). Source: `/autoreply set` in `commands.lua` (`cmd_set`); the config loader itself only resets negative or non-numeric values. The UI copies these limits (that function is not vendored).
+
 ## 5. Version gating (read `info.json` version)
 | Feature | Plugin version |
 |---|---|

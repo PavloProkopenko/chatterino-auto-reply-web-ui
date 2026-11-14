@@ -24,6 +24,8 @@ export interface AppOptions {
   assets?: Map<string, Asset>;
   /** Largest accepted request body. Default 5 MB. */
   maxBodyBytes?: number;
+  /** Receives the page's heartbeats and goodbyes (see lifecycle.ts). */
+  lifecycle?: { heartbeat(tabId: string): void; bye(tabId: string): void };
 }
 
 export interface RunningServer {
@@ -61,6 +63,7 @@ const SelectBody = v.object({ path: v.pipe(v.string(), v.minLength(1), v.maxLeng
 // valibot's record() copies arrays into objects, so test the raw input instead.
 const PlainObject = v.custom<Record<string, unknown>>((o) => typeof o === 'object' && o !== null && !Array.isArray(o));
 const SaveBody = v.object({ baseHash: HASH, config: PlainObject });
+const TabBody = v.object({ tab: v.pipe(v.string(), v.regex(/^[\w-]{8,64}$/)) });
 const RestoreBody = v.object({ name: v.pipe(v.string(), v.maxLength(200)) });
 
 class HttpError extends Error {
@@ -134,7 +137,9 @@ export async function startServer(opts: AppOptions = {}): Promise<RunningServer>
     },
     '/api/config': {
       GET: async () => {
-        const path = needSelected();
+        // Not an error: this is the normal first-run state, so it is a 200 (no red entry in the browser console).
+        if (!selected) return { body: { status: 'no-config-selected' } };
+        const path = selected;
         const base = await configInfo(path);
         const r = await store.load(path);
         if (r.status === 'ok') return { body: { status: 'ok', ...base, snapshot: r.snapshot, config: r.config, exact: r.exact } };
@@ -156,6 +161,18 @@ export async function startServer(opts: AppOptions = {}): Promise<RunningServer>
         await readJson(req, PlainObject);
         const r = await store.createDefault(path);
         return { status: r.status === 'created' ? 201 : 409, body: r };
+      },
+    },
+    '/api/heartbeat': {
+      POST: async (req) => {
+        opts.lifecycle?.heartbeat((await readJson(req, TabBody)).tab);
+        return { body: { ok: true } };
+      },
+    },
+    '/api/bye': {
+      POST: async (req) => {
+        opts.lifecycle?.bye((await readJson(req, TabBody)).tab);
+        return { body: { ok: true } };
       },
     },
     '/api/backups': {

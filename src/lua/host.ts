@@ -7,6 +7,8 @@ export interface LuaSources {
   shim: string;
   json: string;
   bridge: string;
+  /** Where to fetch glue.wasm in a browser; Node finds it by itself. */
+  wasmUri?: string;
 }
 
 export interface SanitiseResult {
@@ -25,7 +27,7 @@ export interface LuaHost {
 }
 
 export async function createLuaHost(sources: LuaSources): Promise<LuaHost> {
-  const lua = await new LuaFactory().createEngine();
+  const lua = await new LuaFactory(sources.wasmUri).createEngine();
   const preload = (name: string, src: string) => {
     lua.global.set('__src', src);
     lua.doStringSync(`package.preload[${JSON.stringify(name)}] = assert(load(__src, ${JSON.stringify('=' + name)}))`);

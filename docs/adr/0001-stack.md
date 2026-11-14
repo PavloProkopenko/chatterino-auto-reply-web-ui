@@ -68,3 +68,14 @@ Spike-only dependencies (`wasmoon`, `svelte`, `svelte-dnd-action`, `vite`) live 
 - **Vitest 5.1.0** for unit and contract tests; `node:test` stays for the scripts folder.
 - **Lua runs only in the browser/worker**, as the architecture says; the server has no Lua endpoint. The in-repo `src/lua/` host is exercised by contract tests in Node through the same code.
 - Dependencies added: `wasmoon` (Lua 5.4 in WASM), `valibot`, `typescript`, `typescript-eslint`, `vitest`, `@types/node`.
+
+## Addendum (Phase 2, 2026-11-14)
+- **UI embedding:** `scripts/build-ui.mjs` runs Vite and writes `src/server/assets.generated.ts` (gitignored; base64 assets); the server serves it and `bun build --compile` embeds it. Everything the page needs (JS, CSS, the Lua worker, `glue.wasm`) is same-origin, so the strict CSP stays: no inline scripts, `<style>` or `style=""`, no Svelte transitions (they inject `<style>`), plain CSS transitions instead.
+- **Lifecycle:** each tab has an id and sends a heartbeat every 10 s and a `bye` (keepalive fetch) on `pagehide`. The app exits 10 s after the last tab is gone, 3 min after a tab goes silent, or 60 s after start if no tab ever connects. `AUTO_REPLY_WEB_NO_EXIT=1` / `AUTO_REPLY_WEB_NO_BROWSER=1` disable exit and browser opening for development and tests.
+- **Token handling:** the page reads the token from the URL fragment, keeps it in `sessionStorage` (so a reload works) and removes it from the address bar.
+- **State:** `Session` (Svelte 5 runes in a `.svelte.ts` module, tested with Vitest through the Svelte plugin) owns load/edit/undo/save/conflict logic. `mergeConfigs` gained per-conflict `resolutions`; after the user's choices the UI rebases onto the plugin's version, so stale live state is never written.
+- **Validation:** names are checked by the plugin's own `util.parse_channels` / `util.parse_skip` in the Lua worker. Cooldown ranges (0-86400, `gap` >= 1) are copied from `/autoreply set` in `commands.lua`, which is not vendored: UI limit.
+- **e2e:** Playwright on a compiled executable built with `VITE_E2E=1` (it exposes the Lua client as `window.__e2e` for tests; the production build does not). The browser lives in `.tools/browsers`. `@axe-core/playwright` runs automated WCAG 2 A/AA checks in the same run.
+- Dependencies added: `svelte`, `vite`, `@sveltejs/vite-plugin-svelte` (the UI, per this ADR), `svelte-check` (types for `.svelte`), `@playwright/test` (real-browser e2e), `@axe-core/playwright` (accessibility checks in e2e).
+- `webapp-testing` skill reviewed and **not installed**: Python Playwright helpers built around a fixed-port dev server (`with_server.py` uses `shell=True`); this project already has a TypeScript suite that starts the real executable on a random port with a token.
+- Closed: the worker timeout now has a real-browser test (Chromium, macOS). Still UNVERIFIED: Windows, Intel macOS, Firefox/Safari.

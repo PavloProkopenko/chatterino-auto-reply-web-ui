@@ -12,19 +12,28 @@
     "sync-plugin": "node scripts/sync-plugin.mjs",
     "sync-plugin:check": "node scripts/sync-plugin.mjs --check",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node scripts/build-ui.mjs --stub-if-missing && tsc --noEmit && svelte-check --tsconfig ./tsconfig.json --threshold warning",
     "test": "node --test scripts/*.test.mjs && vitest run",
     "test:scripts": "node --test scripts/*.test.mjs",
-    "build:smoke": "node scripts/build-smoke.mjs"
+    "build:smoke": "node scripts/build-smoke.mjs",
+    "build:ui": "node scripts/build-ui.mjs",
+    "build:e2e": "node scripts/build-e2e.mjs",
+    "test:e2e": "node scripts/build-e2e.mjs && playwright test"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.65.1",
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
     "@types/node": "22.20.5",
     "bun": "1.4.4",
     "eslint": "10.15.0",
     "globals": "17.14.0",
+    "svelte": "5.57.3",
+    "svelte-check": "4.7.8",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.2",
+    "vite": "8.3.8",
     "vitest": "5.1.0"
   },
   "dependencies": {

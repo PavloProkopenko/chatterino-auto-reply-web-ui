@@ -2,7 +2,18 @@
 
 Project: a local web UI for editing the config of the **Auto Reply** plugin for Leafyrino (a Chatterino fork). Separate, optional project. The plugin lives in `../auto-reply-plugin/` and must stay installable and fully working without this app. Read `docs/CONTRACT.md` first: it is the authoritative description of the plugin's config file and its pitfalls. Chat language with the owner: English. The owner's audience is Russian-speaking streamers; the UI text is **Russian**.
 
-Nothing has been implemented yet. This folder only contains this plan, `docs/CONTRACT.md` and `CLAUDE.md`.
+## 0. Status (updated 2026-11-14)
+| Phase | State |
+|---|---|
+| 0 Environment | **Done** (`docs/phase-0-plan.md`, ADR 0001 accepted) |
+| 1 Core | **Done on the dev Mac** (`docs/phase-1-plan.md`): Lua WASM host, config model, merge, file store, discovery, settings, HTTP API, compiled-binary smoke test |
+| 2 Shell and Settings | **Done on the dev Mac** (`docs/phase-2-plan.md`): UI shell + Settings page, lifecycle, e2e in a real browser |
+| 3-7 | Not started |
+
+**Postponed by the owner:** the first CI run (nothing is pushed yet). Until it runs, everything Windows and Intel-macOS stays UNVERIFIED: `prepare.ps1`, the `bun.exe` path in `scripts/build-smoke.mjs`, the Windows open-file test, the x64 macOS binary natively. Run CI before Phase 6 at the latest (before any bundle is built), and earlier if a Windows-only problem is suspected.
+**Open owner decision:** write `[]` instead of `{}` for emptied lists (`[]` is VERIFIED to load on Leafyrino Nightly 2.5.5, macOS; see `docs/manual-checks/empty-lists.md`). Until decided the app writes `{}`.
+
+Phase deliverables are described in sections 3 and 4; the phase plans in `docs/` record what was actually built and where it differs.
 
 ## 1. Decisions already made with the owner
 | Topic | Decision |
@@ -51,7 +62,7 @@ local server (127.0.0.1)  --  config discovery, read, backup, atomic write, hash
 
 ## 4. Phases and acceptance criteria
 
-### Phase 0 - Environment (do this first; no product code yet)
+### Phase 0 - Environment (DONE; see docs/phase-0-plan.md)
 Deliverables:
 1. `git init`, `.gitignore`, `README.md` skeleton, licence placeholder (ask the owner), `CLAUDE.md` kept up to date.
 2. **Stack decision record** `docs/adr/0001-stack.md` backed by short spikes (throw-away code in `spikes/`, each with a pass/fail result):
@@ -69,9 +80,10 @@ Deliverables:
 5. CI skeleton: `.github/workflows/ci.yml` (on push/PR: lint, unit tests, vendored-plugin drift check, build smoke on `windows-latest` and a macOS runner). The repo is `https://github.com/PavloProkopenko/chatterino-auto-reply-web-ui` (remote `origin` is already configured locally; nothing pushed yet). The release workflow is specified in section 4a and implemented in Phase 6; Phase 0 only reserves the version/tag conventions.
 Acceptance: a fresh clone + `scripts/prepare.*` reaches a green lint/test/build smoke on the dev Mac; ADR 0001 merged with spike evidence; agents/skills documented in `docs/sdlc.md`.
 
-### Phase 1 - Core (no UI polish)
+### Phase 1 - Core (no UI polish) (DONE on macOS; see docs/phase-1-plan.md)
 Config discovery, safe read/write (backup, hash/mtime, atomic, Windows retry), normalisation and live-field merge, vendored Lua in WASM, version gating, API with token/Host checks, contract tests with `config.customer.json`-style fixtures (legacy shapes, `{}` lists, unknown keys).
 Acceptance: round trip of every sample config is byte-stable apart from intended edits; concurrent-write test (simulated plugin save) yields 409 not data loss; security tests (bad Host/token rejected).
+Outcome: all met locally (168 tests; plugin sample configs round-trip byte-stable). Not met yet: the Windows/Intel CI run (postponed). Differences from this text: no Lua HTTP endpoint (Lua runs in the browser); empty lists stay `{}` for now.
 
 ### Phase 2 - Shell and Settings page
 App shell (navigation, dirty state, save bar, "run /autoreply reload" banner), config picker/fallback, Settings page (cooldowns, only-when-live, skipmods, mute lurkers, backfire, channels, ignore/protect users) with inline validation.
@@ -111,4 +123,4 @@ Goal: a tag produces a draft GitHub Release with portable bundles for Windows x6
 - Prefer small, boring dependencies; pin versions; record each dependency's reason in the ADR.
 
 ## 6. Deferred decisions (ask the owner when reached)
-Project/app name and licence; main-page layout (Phase 5); onboarding content (Phase 7); release channel (GitHub Releases or direct file) and code signing; whether to add the optional hot-reload poll to the plugin later (rejected for v1); a future "run my real chat logs through the rules" feature (Chatterino keeps logs in its `Logs` folder; the plugin repo already has the replay harness idea).
+First CI run and pushing the repo (postponed in Phase 1; due before Phase 6); `{}` vs `[]` when emptying a list; Project/app name and licence; main-page layout (Phase 5); onboarding content (Phase 7); release channel (GitHub Releases or direct file) and code signing; whether to add the optional hot-reload poll to the plugin later (rejected for v1); a future "run my real chat logs through the rules" feature (Chatterino keeps logs in its `Logs` folder; the plugin repo already has the replay harness idea).

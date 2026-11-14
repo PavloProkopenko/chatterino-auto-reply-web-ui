@@ -138,3 +138,45 @@ describe('mergeConfigs', () => {
     expect([r.config.next_timer_id, r.config.next_rule_id]).toEqual([10, 20]);
   });
 });
+
+describe('mergeConfigs with resolutions (the user picked a side per conflict)', () => {
+  const b = start();
+
+  test('same field: mine or theirs, everything else still merged', () => {
+    const t = copy(b, (c) => {
+      c.rules[1]!.reply = 'плагин';
+      Object.assign(c.timers[0]!, { enabled: true, started_at: 1700000000 });
+    });
+    const m = copy(b, (c) => (c.rules[1]!.reply = 'я'));
+    const mine = mergeConfigs(b, t, m, { 'rules[2].reply': 'mine' });
+    const theirs = mergeConfigs(b, t, m, { 'rules[2].reply': 'theirs' });
+    expect(mine.ok && mine.config.rules[1]!.reply).toBe('я');
+    expect(theirs.ok && theirs.config.rules[1]!.reply).toBe('плагин');
+    // the plugin's live state survives either way: no stale value is written back
+    for (const r of [mine, theirs]) expect(r.ok && r.config.timers[0]).toMatchObject({ enabled: true, started_at: 1700000000 });
+  });
+
+  test('delete vs edit: keep the item or let it go', () => {
+    const t = copy(b, (c) => (c.rules = c.rules.filter((r) => r.id !== 2)));
+    const m = copy(b, (c) => (c.rules[1]!.reply = 'правка'));
+    const keep = mergeConfigs(b, t, m, { 'rules[2]': 'mine' });
+    const drop = mergeConfigs(b, t, m, { 'rules[2]': 'theirs' });
+    expect(keep.ok && keep.config.rules.map((r) => r.id)).toEqual([1, 2, 3]);
+    expect(drop.ok && drop.config.rules.map((r) => r.id)).toEqual([1, 3]);
+  });
+
+  test('order conflict: either order can be chosen', () => {
+    const t = copy(b, (c) => c.rules.reverse());
+    const m = copy(b, (c) => c.rules.push(c.rules.shift()!));
+    const mine = mergeConfigs(b, t, m, { 'rules.order': 'mine' });
+    const theirs = mergeConfigs(b, t, m, { 'rules.order': 'theirs' });
+    expect(mine.ok && mine.config.rules.map((r) => r.id)).toEqual([2, 3, 1]);
+    expect(theirs.ok && theirs.config.rules.map((r) => r.id)).toEqual([3, 2, 1]);
+  });
+
+  test('an unresolved conflict is still reported', () => {
+    const t = copy(b, (c) => (c.rules[1]!.reply = 'плагин'));
+    const m = copy(b, (c) => (c.rules[1]!.reply = 'я'));
+    expect(mergeConfigs(b, t, m, { 'something.else': 'mine' }).ok).toBe(false);
+  });
+});

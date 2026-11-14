@@ -2,7 +2,8 @@
 # the lockfile, then lint, unit tests, vendor drift check and a build smoke test. Idempotent, no admin rights.
 #   scripts\prepare.ps1           do everything
 #   scripts\prepare.ps1 -Check    only report what is missing
-param([switch]$Check)
+#   scripts\prepare.ps1 -NoE2E    skip the browser install and the Playwright run (about a minute)
+param([switch]$Check, [switch]$NoE2E)
 $ErrorActionPreference = 'Stop'
 
 $NodeVersion = '22.17.0'
@@ -50,6 +51,7 @@ if ($have -ne $PnpmVersion) {
 }
 
 if (-not (Test-Path (Join-Path $Root 'node_modules'))) { $missing += 'dependencies (pnpm install)' }
+if (-not $NoE2E -and -not (Test-Path (Join-Path $Tools 'browsers'))) { $missing += 'Playwright browser in .tools (run without -NoE2E)' }
 if ($Check) {
   if ($missing.Count) { Write-Host 'Missing:'; $missing | ForEach-Object { Write-Host "  - $_" }; exit 1 }
   Write-Host 'Everything is in place.'; exit 0
@@ -59,6 +61,13 @@ Set-Location $Root
 foreach ($step in @(@('install','--frozen-lockfile'), @('lint'), @('typecheck'), @('test'), @('sync-plugin:check'), @('build:smoke'))) {
   & $pnpmBin @step
   if ($LASTEXITCODE) { throw "pnpm $($step -join ' ') failed" }
+}
+if (-not $NoE2E) {
+  $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path $Tools 'browsers'
+  foreach ($step in @(@('exec','playwright','install','chromium'), @('test:e2e'))) {
+    & $pnpmBin @step
+    if ($LASTEXITCODE) { throw "pnpm $($step -join ' ') failed" }
+  }
 }
 Write-Host ''
 Write-Host "Ready. Use:  `$env:PATH = `"$nodeDir;$Tools\pnpm\node_modules\.bin;`$env:PATH`"  then  pnpm test"

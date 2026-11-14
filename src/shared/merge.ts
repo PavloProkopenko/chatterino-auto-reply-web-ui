@@ -21,9 +21,12 @@ const ITEM_LISTS = new Set(['rules', 'timers', 'redeems']);
 const COUNTERS = new Set(['next_rule_id', 'next_timer_id', 'next_redeem_id']);
 
 type Item = { id: number; [key: string]: unknown };
+export type Resolutions = Record<string, 'mine' | 'theirs'>;
+
 interface Ctx {
   notes: MergeNote[];
   conflicts: Conflict[];
+  resolutions: Resolutions;
 }
 
 /**
@@ -40,6 +43,8 @@ function three(path: string, b: unknown, t: unknown, m: unknown, ctx: Ctx, live 
     ctx.notes.push({ path, note: "live value kept from the plugin; the UI change was dropped" });
     return t;
   }
+  const choice = ctx.resolutions[path];
+  if (choice) return choice === 'mine' ? m : t;
   ctx.conflicts.push({ path, base: b, theirs: t, mine: m });
   return t;
 }
@@ -89,11 +94,15 @@ function mergeItems(list: string, b: Item[], t: Item[], m: Item[], ctx: Ctx): It
     else if (!bi && mi) result.set(id, mi);
     else if (bi && ti && !mi) {
       if (deepEqual(ti, bi)) continue; // I deleted it, the plugin left it alone
-      ctx.conflicts.push({ path, base: bi, theirs: ti, mine: undefined });
+      const choice = ctx.resolutions[path];
+      if (choice === 'mine') continue;
+      if (!choice) ctx.conflicts.push({ path, base: bi, theirs: ti, mine: undefined });
       result.set(id, ti);
     } else if (bi && mi && !ti) {
       if (deepEqual(mi, bi)) continue; // the plugin (or a hand edit) deleted it, I left it alone
-      ctx.conflicts.push({ path, base: bi, theirs: undefined, mine: mi });
+      const choice = ctx.resolutions[path];
+      if (choice === 'theirs') continue;
+      if (!choice) ctx.conflicts.push({ path, base: bi, theirs: undefined, mine: mi });
       result.set(id, mi);
     }
   }
@@ -107,11 +116,22 @@ function mergeItems(list: string, b: Item[], t: Item[], m: Item[], ctx: Ctx): It
   if (sameSeq(mSeq, baseSeq) || sameSeq(mSeq, tSeq)) primary = idsOf(t);
   else if (sameSeq(tSeq, baseSeq)) primary = idsOf(m);
   else {
-    ctx.conflicts.push({ path: `${list}.order`, base: idsOf(b), theirs: idsOf(t), mine: idsOf(m) });
-    primary = idsOf(t);
+    const choice = ctx.resolutions[`${list}.order`];
+    if (!choice) ctx.conflicts.push({ path: `${list}.order`, base: idsOf(b), theirs: idsOf(t), mine: idsOf(m) });
+    primary = choice === 'mine' ? idsOf(m) : idsOf(t);
   }
   const ordered: number[] = [];
-  for (const id of [...primary, ...idsOf(m), ...idsOf(t)]) if (result.has(id) && !ordered.includes(id)) ordered.push(id);
+  for (const id of primary) if (result.has(id) && !ordered.includes(id)) ordered.push(id);
+  // Items the primary order does not know (new on the other side, or kept against the plugin's deletion) go
+  // before their next known neighbour in the list they came from, or at the end.
+  for (const source of [idsOf(m), idsOf(t)]) {
+    source.forEach((id, i) => {
+      if (!result.has(id) || ordered.includes(id)) return;
+      const next = source.slice(i + 1).find((x) => ordered.includes(x));
+      if (next === undefined) ordered.push(id);
+      else ordered.splice(ordered.indexOf(next), 0, id);
+    });
+  }
   const out = ordered.map((id) => result.get(id)!);
 
   let next = Math.max(0, ...allIds, ...out.map((i) => i.id));
@@ -123,8 +143,9 @@ function mergeItems(list: string, b: Item[], t: Item[], m: Item[], ctx: Ctx): It
   return out;
 }
 
-export function mergeConfigs(base: Config, theirs: Config, mine: Config): MergeResult {
-  const ctx: Ctx = { notes: [], conflicts: [] };
+/** `resolutions` settles conflicts by path ('mine' | 'theirs'), as chosen in the conflict dialog. */
+export function mergeConfigs(base: Config, theirs: Config, mine: Config, resolutions: Resolutions = {}): MergeResult {
+  const ctx: Ctx = { notes: [], conflicts: [], resolutions };
   const out: Record<string, unknown> = {};
   const keys = new Set([...Object.keys(theirs), ...Object.keys(mine), ...Object.keys(base)]);
   for (const key of keys) {

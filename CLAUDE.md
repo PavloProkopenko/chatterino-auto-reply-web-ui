@@ -3,14 +3,14 @@
 ## Project
 Optional, separate project: a local web app that edits the `data/config.json` of the Auto Reply plugin (sibling repo `../auto-reply-plugin/`, Lua plugin for Leafyrino, a Chatterino fork). The plugin must keep working without this app. Owner: Pavlo. Chat language with the owner: English; UI text is Russian.
 
-**Start here:** `PLAN.md` (decisions, architecture, edge cases, phases), `docs/CONTRACT.md` (the plugin's config contract), `docs/adr/0001-stack.md` (stack, accepted). Status: Phase 0 done; Phase 1 (core: server, store, merge, Lua host) implemented per `docs/phase-1-plan.md`, pending the owner's review. No UI yet.
+**Start here:** `PLAN.md` (decisions, architecture, edge cases, phases), `docs/CONTRACT.md` (the plugin's config contract), `docs/adr/0001-stack.md` (stack, accepted). Status: Phase 0 done; Phase 1 (core) committed; Phase 2 (UI shell + Settings page, `docs/phase-2-plan.md`) implemented, pending the owner's review. First CI run is postponed by the owner (Windows/Intel macOS remain UNVERIFIED until then). Next: Phase 3 (Rules page and constructor), after the edge-case questions.
 
 ## Commands
 Toolchain lives in `.tools/` (gitignored): `export PATH="$PWD/.tools/node/bin:$PWD/.tools/pnpm/node_modules/.bin:$PATH"` (macOS; `scripts/prepare.sh` creates it, `scripts\prepare.ps1` on Windows).
 - `scripts/prepare.sh [--check]`: set up everything, then lint, tests, vendor check, build smoke.
-- `pnpm lint`, `pnpm typecheck`, `pnpm test` (node:test for scripts + Vitest), `pnpm sync-plugin:check`, `pnpm build:smoke` (compiles `src/server/main.ts` with Bun and runs `scripts/smoke.mjs`); `pnpm sync-plugin` re-vendors the plugin Lua (plugin repo read-only).
+- `pnpm lint`, `pnpm typecheck`, `pnpm test` (node:test for scripts + Vitest), `pnpm sync-plugin:check`, `pnpm build:smoke` (builds the UI, compiles `src/server/main.ts` with Bun, runs `scripts/smoke.mjs`), `pnpm test:e2e` (Playwright against a compiled executable; browser in `.tools/browsers` via `scripts/prepare.*`), `pnpm build:ui`; `pnpm sync-plugin` re-vendors the plugin Lua (plugin repo read-only).
 - Project agents in `.claude/agents/` (architect, backend-dev, frontend-dev, qa-tester); commands `/adr`, `/spike`, `/contract-check`, `/release-check`.
-- Layout: `src/shared` (config model, merge, ids; no I/O), `src/server` (store, discovery, settings, HTTP API), `src/lua` (WASM Lua host + worker client), `tests/` (Vitest, synthetic fixtures in `tests/fixtures/`). `spikes/ui-svelte` is a throw-away reference.
+- Layout: `src/shared` (config model, merge, ids; no I/O), `src/server` (store, discovery, settings, HTTP API), `src/lua` (WASM Lua host + worker client), `src/ui` (Svelte 5 app: `state/session.svelte.ts` is the editing session), `src/i18n/ru.ts` (all UI strings), `tests/` (Vitest unit, `tests/e2e` Playwright, synthetic fixtures in `tests/fixtures/`). UI rules: dark only, strict CSP (no inline styles, no Svelte transitions), no external requests. `spikes/ui-svelte` is a throw-away reference.
 - Never log config contents; the server logs only method, path and status.
 
 ## Hard facts
