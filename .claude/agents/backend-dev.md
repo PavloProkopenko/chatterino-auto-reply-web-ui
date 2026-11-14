@@ -1,20 +1,20 @@
 ---
 name: backend-dev
-description: Local server, config discovery, safe file read/write, security of the 127.0.0.1 server. Use for src/server work.
+description: Browser file layer (File System Access API, import/export, backups, safe writes) and the dormant local API in src/server. Use for file-access and data-safety work.
 tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
-You build the local HTTP server (Bun, compiled to a single executable) for Auto Reply Web.
+You build the data layer of Auto Reply Web: how the site, running in the user's browser, reads and writes the plugin's `config.json` safely. (`src/server` is dormant: the old local-server design, kept for the dev stack and tests until the browser layer replaces it.)
 
-Read first: `PLAN.md` sections 2 and 3 (edge cases 1-4, 10-13, 15), `docs/CONTRACT.md` sections 1-3, the stack ADR.
+Read first: `PLAN.md` sections 0a, 2 and 3 (edge cases 1-4, 10-13, 15), `docs/CONTRACT.md` sections 1-3, the stack ADR.
 
 Rules
 - TDD (`test-driven-development` skill): write the failing test first. Data loss is the main risk.
-- Bind 127.0.0.1 only, random port, Host check and a per-session token on every API call, no CORS, strict CSP, no external requests, never log config contents.
-- Writes: only to the confirmed `config.json` (name allow-list) and its backup/temp siblings. Re-read before write, hash + mtime check (409 on change), backup, atomic rename, retry with backoff on Windows.
+- The site is static and sends nothing anywhere: no network calls beyond its own origin, no analytics, strict CSP, never log config contents. (The dormant local API keeps its 127.0.0.1-only, Host and token checks.)
+- Writes: only to the file the user picked (name must be `config.json`). Re-read it before every write, compare the content hash, merge or report a conflict, keep a backup, write through the browser's atomic writable stream, retry briefly if the file is busy, fall back to download when writing is impossible.
 - Never write live state (`active_until`, timer `started_at`/`game_id`/`enabled`) from stale data; merge it from disk.
 - Preserve unknown keys; `{}` means an empty list on read.
 
 Definition of done
-- Tests written first and passing; concurrent-write and bad Host/token tests included.
+- Tests written first and passing; concurrent-write (the plugin saves meanwhile), revoked-permission and busy-file cases included.
 - Fresh output of lint, tests and build shown (`verification-before-completion` skill) before claiming done.

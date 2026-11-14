@@ -1,28 +1,38 @@
 # Auto Reply Web: implementation plan (hand-off to the next agent)
 
-Project: a local web UI for editing the config of the **Auto Reply** plugin for Leafyrino (a Chatterino fork). Separate, optional project. The plugin lives in `../auto-reply-plugin/` and must stay installable and fully working without this app. Read `docs/CONTRACT.md` first: it is the authoritative description of the plugin's config file and its pitfalls. Chat language with the owner: English. The owner's audience is Russian-speaking streamers; the UI text is **Russian**.
+Project: a web UI (a static site hosted on Vercel, working on the user's own file in their browser) for editing the config of the **Auto Reply** plugin for Leafyrino (a Chatterino fork). Separate, optional project. The plugin lives in `../auto-reply-plugin/` and must stay installable and fully working without this app. Read `docs/CONTRACT.md` first: it is the authoritative description of the plugin's config file and its pitfalls. Chat language with the owner: English. The owner's audience is Russian-speaking streamers; the UI text is **Russian**.
 
 ## 0. Status (updated 2026-11-14)
 | Phase | State |
 |---|---|
 | 0 Environment | **Done** (`docs/phase-0-plan.md`, ADR 0001 accepted) |
-| 1 Core | **Done on the dev Mac** (`docs/phase-1-plan.md`): Lua WASM host, config model, merge, file store, discovery, settings, HTTP API, compiled-binary smoke test |
-| 2 Shell and Settings | **Done on the dev Mac** (`docs/phase-2-plan.md`): UI shell + Settings page, lifecycle, e2e in a real browser |
+| 1 Core | **Done on the dev Mac** (`docs/phase-1-plan.md`), built for the old local-server design; the config model, merge, ids and Lua host are reused, the server pieces are dormant (see 0a) |
+| 2 Shell and Settings | **Done on the dev Mac** (`docs/phase-2-plan.md`): UI shell + Settings page, e2e in a real browser. It still reads and writes through the dormant local API stand-in |
+| 2b Hosted data layer | **Next**: replace the API stand-in with browser file access (File System Access API) plus import/export, deploy config for Vercel |
 | 3-7 | Not started |
 
-**Postponed by the owner:** the first CI run (nothing is pushed yet). Until it runs, everything Windows and Intel-macOS stays UNVERIFIED: `prepare.ps1`, the `bun.exe` path in `scripts/build-smoke.mjs`, the Windows open-file test, the x64 macOS binary natively. Run CI before Phase 6 at the latest (before any bundle is built), and earlier if a Windows-only problem is suspected.
+**Postponed by the owner:** the first CI run (nothing is pushed yet). Windows and Intel-macOS no longer matter for customers (there is no download), only browser support does (see 0a).
 **Open owner decision:** write `[]` instead of `{}` for emptied lists (`[]` is VERIFIED to load on Leafyrino Nightly 2.5.5, macOS; see `docs/manual-checks/empty-lists.md`). Until decided the app writes `{}`.
+
+## 0a. Architecture change (2026-11-14): hosted static site
+The owner dropped the local app and the release build. The site is static, hosted on Vercel; customers open a URL and install nothing. Everything runs in the browser and nothing leaves it: no server receives the config.
+- **File access:** the File System Access API (Chrome, Edge, Opera): the user picks `config.json` once, the site reads and saves it in place and remembers the handle. In Firefox and Safari the same screens use "open file" and "download the result". UNVERIFIED so far: whether the browser lets users pick files under `AppData` / `Library/Application Support`, permission re-prompts after a restart, and how the real plugin reacts to an in-place write.
+- **Removed:** the compiled executable and bundles, the release pipeline (old section 4a), the customer-download docs, Windows/macOS packaging, the browser opener, the exit-with-last-tab lifecycle, the prepare-script toolchain download for Windows, `release-check`.
+- **Kept, dormant:** `src/server/` (HTTP API, file store, discovery, settings). It is not shipped. Today it is the stand-in that lets the UI work in `pnpm dev`; Phase 2b replaces it in the UI and the server can then be deleted or kept for a future local mode.
+- **Reused:** `src/shared` (config model, merge, ids, features), `src/lua` (WASM Lua host), `src/ui` (shell and Settings page).
+- **Local development:** `pnpm dev` (Vite dev server with hot reload, a synthetic plugin install in `.app-data/`), `pnpm preview` (the production build with the production CSP), `pnpm build` (output `dist`, what Vercel deploys), `vercel.json` (headers; tested against `src/shared/security-headers.ts`).
+- **Affected edge cases (section 3):** 1, 10, 11, 12, 13 are rewritten for the browser; 15 gains "no analytics, no third-party scripts, nothing sent anywhere".
 
 Phase deliverables are described in sections 3 and 4; the phase plans in `docs/` record what was actually built and where it differs.
 
 ## 1. Decisions already made with the owner
 | Topic | Decision |
 |---|---|
-| Architecture | **Local app**: a small HTTP server on 127.0.0.1 serving a browser UI; the server reads/writes `config.json` directly. Not a static page. |
-| Config discovery | Auto-detect (scan by content, see CONTRACT §1); if nothing is found or the user disagrees, the user types/picks a path. Remember the choice. |
-| Running app | UI writes the file, then tells the user to run `/autoreply reload`. No plugin change. Detect external changes (hash + mtime), back up before every write, atomic write. |
-| Distribution | **Portable bundle, nothing to install** for customers: Windows 10/11 x64 and macOS (arm64 + x64). Linux not required. |
-| From-source path | Also keep prepare scripts (`scripts/prepare.ps1`, `scripts/prepare.sh`) that download the toolchain and dependencies for developers/CI, and for anyone running from source. |
+| Architecture | **Static site on Vercel**, all logic in the browser (see 0a). Supersedes the earlier local-app design. |
+| Config location | The user picks `config.json` (File System Access API, or open/download in other browsers); the site shows where the file normally lives (CONTRACT §1) and remembers the handle. No scanning: a website cannot list folders. |
+| Running app | UI writes the file, then tells the user to run `/autoreply reload`. No plugin change. Detect external changes (content hash) by re-reading the file before every save, merge, keep a backup, write through the browser's atomic writable stream. |
+| Distribution | **A URL.** Vercel hosts the static build (`dist`); nothing to download or install. |
+| Developer setup | `scripts/prepare.sh` (macOS/Linux): pinned pnpm, install, lint, typecheck, tests, build, e2e. `pnpm dev` for the Vite server. |
 | Rule evaluation | **Run the plugin's real Lua in the browser** (WebAssembly Lua 5.4, e.g. `wasmoon`) for validation and the live "test message" preview. No second implementation of the matching logic. |
 | Language | Russian only; all strings in one dictionary module (`src/i18n/ru.ts`) so another language can be added later. |
 | v1 editable scope | All config **except live state**: settings, rules (conditions, reply, channels, skip, names, enable, order), timers (conditions, reply, format, category behaviour, skip, enable), redeems, ignore/protect users. Not editable: `active_until` (master on/off), timer `started_at`/elapsed. Enabling a timer from the UI starts it "now" and the UI says so. |
@@ -31,15 +41,15 @@ Phase deliverables are described in sections 3 and 4; the phase plans in `docs/`
 
 ## 2. Architecture (target)
 ```
-browser (SPA, Russian UI)
-   |  HTTP+JSON, same origin, per-session token
-local server (127.0.0.1)  --  config discovery, read, backup, atomic write, hash/mtime check
-   |-- vendored plugin Lua (util, rules, names, config sanitiser) run in WASM Lua (in the browser)
-   `-- single-file executable per OS (portable bundle)
+Vercel (static files: HTML, JS, CSS, worker, glue.wasm)  -->  browser (SPA, Russian UI)
+browser:
+   |-- File System Access API (or open/download): the user's config.json, read, merged, backed up, written in place
+   |-- vendored plugin Lua (util, rules, names, config sanitiser) run in WASM Lua inside a Web Worker
+   `-- app settings and backups in the browser's own storage (IndexedDB), never sent anywhere
 ```
-- The Lua runs **client-side** in the browser (preview must be instant while typing). The server stays dumb: files and security only.
+- The Lua runs **client-side** in the browser (preview must be instant while typing). There is no server of ours at runtime.
 - `vendor/plugin/` holds copies of the plugin's pure Lua modules (`util.lua`, `rules.lua`, `names.lua`, the sanitising part of `config.lua`) plus a small shim for `c2`/`chatterino.json`. `scripts/sync-plugin` copies them from `../auto-reply-plugin/auto-reply/` and records the plugin version + file hashes; CI fails if the vendored copy drifted from the recorded hashes. A contract test loads the real sample configs through the vendored Lua.
-- The app keeps its own small settings (chosen config path, onboarding done, window state) in the user's profile dir, never inside the plugin folder.
+- The app keeps its own small settings (the remembered file handle, onboarding done) in the browser's storage for the site's origin, never inside the plugin folder.
 
 ## 3. Edge-case register (each needs a design decision in code + a test)
 1. **Running app overwrites edits.** The plugin saves on every change; stale UI writes lose data. Handle: hash+mtime check before write (409 + "file changed, reload?" diff), backup `config.json.bak-<timestamp>` (keep last N), atomic rename. After a successful write show "Run `/autoreply reload` in Leafyrino" with a copy button. `reload` also drops a session-only "on": say so.
@@ -52,9 +62,9 @@ local server (127.0.0.1)  --  config discovery, read, backup, atomic write, hash
 8. **Channel scope.** Rules bound to a channel absent from `channels` are dormant: flag it in the list. Channel names: lowercase login, no `#`.
 9. **Version gating.** Read `../info.json` version; disable/explain controls the installed plugin cannot use (CONTRACT §5). Unknown newer fields are preserved.
 10. **Corrupt or missing file.** Missing: offer default config. Invalid JSON: read-only view + message, never overwrite silently; mirror the plugin's `config.json.bad` behaviour.
-11. **Multiple installs / wrong file.** List all detected candidates with plugin version and mtime; confirm before the first write; allow-list: the target must be named `config.json`.
-12. **Security (local server).** Bind 127.0.0.1 only; random free port; Host-header check and a per-session token in every API call (prevents DNS rebinding and CSRF from other web pages); no CORS; no external requests, fonts or CDNs at runtime (offline, and keeps the customer's config private); strict CSP; no telemetry; write only to the confirmed config path and its backup/temp siblings.
-13. **Windows specifics.** Atomic replace while another process (Chatterino) may hold the file: retry with backoff; path with Cyrillic user names; `%APPDATA%` detection; SmartScreen/unsigned binary instructions in the customer README. macOS: unsigned app (Gatekeeper: right-click > Open, or `xattr`), arm64 and x64 builds.
+11. **Wrong file / several installs.** The user picks the file, so: show the picked file's name and folder (path hidden on screen by default, privacy), refuse anything not named `config.json`, warn if the content does not look like the plugin's config, confirm before the first write. The site explains where the file normally lives per OS (CONTRACT §1).
+12. **Security (hosted site).** Strict CSP and security headers on every response (`src/shared/security-headers.ts`, mirrored in `vercel.json`, tested); no third-party scripts, fonts, analytics or network calls beyond its own origin; the config never leaves the browser; no cookies; permissions limited to the file the user picked. Dependencies pinned and audited; build from the lockfile.
+13. **Browser support.** Direct file access needs a Chromium browser; the fallback (open/download) works everywhere. Handle: permission lost or revoked, file moved or deleted, the handle surviving a restart (re-prompt), writes failing while Chatterino holds the file (retry, then fall back to download), private windows (no persistence). Windows/macOS specifics now concern only the file dialog (hidden `AppData` / `Library` folders) and are UNVERIFIED until tested.
 14. **Redeem/moderation features.** The plugin's mod-badge and reward-title detection are UNVERIFIED in the real app: the UI can edit them but must label the feature as "needs a moderator account" and not promise behaviour.
 15. **Secrets and privacy.** The config can hold private channel names and links: never log config contents; backups stay next to the config.
 16. **Large/hand-edited configs.** Hundreds of rules: list virtualisation, search/filter, bulk enable/disable.
@@ -98,21 +108,17 @@ Same builder for timers (`{time}` required, format, category behaviour, enable-n
 ### Phase 5 - Main page
 Quick access cards (rules, timers, redeems, settings), at-a-glance status from the file (counts, dormant items, warnings). Layout decided with the owner at this point.
 
-### Phase 6 - Packaging and customer delivery
-Release workflow from section 4a (dry run first, then a real `v0.1.0` draft release); portable bundles (Windows x64, macOS arm64/x64), checksums, `docs/customer-ru.md` (download, unblock/unquarantine, start, where the config is found, how to reload in Leafyrino), smoke test of each bundle on a clean machine/VM, release notes.
+### Phase 6 - Hosting on Vercel (replaces "Packaging and customer delivery")
+Connect the repository to Vercel, production and preview deployments, the production headers (`vercel.json`), a custom domain if wanted, a short Russian customer page or in-app help (where the file is, which browser to use, the `/autoreply reload` step), and a smoke test of the deployed URL in Chrome and in a non-Chromium browser. No release artifacts, no signing, no bundles.
 
 ### Phase 7 - Onboarding (last)
 Skippable first-run tour explaining pages, constructor, preview and the reload step; "show again" in settings.
 
-### 4a. Release pipeline (GitHub Actions; implemented in Phase 6, designed now)
-Goal: a tag produces a draft GitHub Release with portable bundles for Windows x64, macOS arm64 and macOS x64, plus checksums, with no manual build steps.
-- **Trigger:** push of a tag `vX.Y.Z` (semver) starts `release.yml`; `workflow_dispatch` with `dry_run=true` builds everything and uploads workflow artifacts without creating a release (use it to rehearse). Pre-release tags (`v0.1.0-rc.1`) create a GitHub *pre-release*.
-- **Version source of truth:** `package.json`. The workflow fails if the tag differs from it, if `CHANGELOG.md` has no section for the version, or if `vendor/plugin/VERSION.json` (plugin version + file hashes) does not match the vendored files. The minimum supported plugin version is stated in the release notes.
-- **Jobs:** (1) `verify`: install the pinned toolchain through `scripts/prepare.sh --ci`, lint, unit tests, contract tests against the vendored Lua, e2e smoke. (2) `build` matrix: `windows-latest` (x64), a macOS arm64 runner, and an Intel macOS runner or cross-compilation if the chosen compile tool supports it; each builds the single-file executable, runs the e2e smoke test against the built executable (start, discover a synthetic config, save, read back), zips it as `auto-reply-web-<version>-<os>-<arch>.zip` and writes a `.sha256`. (3) `publish` (needs all builds): creates a **draft** release with generated notes from `CHANGELOG.md`, attaches the zips and `SHA256SUMS.txt`; the owner reviews and publishes by hand.
-- **Security of the pipeline:** third-party actions pinned by commit SHA; `permissions: contents: read` by default, `contents: write` only in `publish`; no secrets other than the built-in `GITHUB_TOKEN`; dependency install from the lockfile only (`--frozen-lockfile`); artifact provenance via `actions/attest-build-provenance` (verifiable with `gh attestation verify`); Dependabot (or Renovate) for actions and npm, grouped weekly.
-- **Not signed in v1:** Windows SmartScreen and macOS Gatekeeper will warn; `docs/customer-ru.md` explains how to start the app anyway (Windows: "More info > Run anyway"; macOS: right-click > Open or `xattr -d com.apple.quarantine`). Code signing (Authenticode, Apple notarisation) is a deferred decision; the workflow keeps a clearly marked optional signing step.
-- **Rollback:** releases are immutable; fix forward with a new patch tag; a bad release is unpublished by deleting the draft/release and the tag.
-- **Changelog and commits:** `CHANGELOG.md` in Keep a Changelog format, updated in the PR that changes behaviour (checked in CI for PRs touching `src/`).
+### 4a. Deployment (Vercel)
+- Build: `pnpm build` produces `dist`; install with the lockfile only (`pnpm install --frozen-lockfile`). `vercel.json` sets the install and build commands and the security headers. UNVERIFIED until the first deployment: pnpm 12 on Vercel's build image (the config installs it with npm instead of corepack, which cannot start pnpm 12).
+- Every push gets a preview deployment; the production branch deploys to the production URL. Rollback is "promote a previous deployment".
+- CI (GitHub Actions, written but not run yet): lint, typecheck, unit tests, vendored-plugin drift check, production build, Playwright e2e on Linux.
+- Version source of truth: `package.json`; `CHANGELOG.md` per change.
 
 ## 5. Working rules for the agent (also copied into CLAUDE.md)
 - Plan before code. For each phase: re-read this plan, ask the owner about any edge case or open decision not covered here (AskUserQuestion), write a short phase plan, wait for the go-ahead, then implement. Never implement beyond the approved phase.
@@ -123,4 +129,4 @@ Goal: a tag produces a draft GitHub Release with portable bundles for Windows x6
 - Prefer small, boring dependencies; pin versions; record each dependency's reason in the ADR.
 
 ## 6. Deferred decisions (ask the owner when reached)
-First CI run and pushing the repo (postponed in Phase 1; due before Phase 6); `{}` vs `[]` when emptying a list; Project/app name and licence; main-page layout (Phase 5); onboarding content (Phase 7); release channel (GitHub Releases or direct file) and code signing; whether to add the optional hot-reload poll to the plugin later (rejected for v1); a future "run my real chat logs through the rules" feature (Chatterino keeps logs in its `Logs` folder; the plugin repo already has the replay harness idea).
+First CI run and pushing the repo (postponed); Vercel project and domain name; `{}` vs `[]` when emptying a list; Project/app name and licence; main-page layout (Phase 5); onboarding content (Phase 7); release channel (GitHub Releases or direct file) and code signing; whether to add the optional hot-reload poll to the plugin later (rejected for v1); a future "run my real chat logs through the rules" feature (Chatterino keeps logs in its `Logs` folder; the plugin repo already has the replay harness idea).

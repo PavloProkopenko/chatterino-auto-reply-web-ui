@@ -79,3 +79,12 @@ Spike-only dependencies (`wasmoon`, `svelte`, `svelte-dnd-action`, `vite`) live 
 - Dependencies added: `svelte`, `vite`, `@sveltejs/vite-plugin-svelte` (the UI, per this ADR), `svelte-check` (types for `.svelte`), `@playwright/test` (real-browser e2e), `@axe-core/playwright` (accessibility checks in e2e).
 - `webapp-testing` skill reviewed and **not installed**: Python Playwright helpers built around a fixed-port dev server (`with_server.py` uses `shell=True`); this project already has a TypeScript suite that starts the real executable on a random port with a token.
 - Closed: the worker timeout now has a real-browser test (Chromium, macOS). Still UNVERIFIED: Windows, Intel macOS, Firefox/Safari.
+
+## Addendum (2026-11-14): hosted static site; the executable decision is superseded
+The owner moved from a local app to a static site on Vercel (`PLAN.md` section 0a). Consequences for this ADR:
+- **Superseded:** Bun `build --compile`, the single-file executable, portable bundles, the Windows/macOS packaging concerns, Node/Bun toolchain downloads for customers, the tab-lifecycle exit logic, the browser opener. `bun` is no longer a dependency.
+- **Unchanged:** Svelte 5 + Vite + TypeScript, `wasmoon` in a Web Worker, pnpm, Vitest, Playwright, valibot. The UI keeps its strict CSP; headers now come from `src/shared/security-headers.ts`, mirrored in `vercel.json` (a test keeps them equal).
+- **Dormant:** `src/server/` stays in the repo for the dev stack (`scripts/devstack.ts` puts it behind Vite so the UI has data) and its own tests, until the browser file layer replaces it in the UI.
+- **TypeScript rule:** `erasableSyntaxOnly` is on, so Node can run `.ts` files directly (`node --experimental-strip-types`), which the dev stack and the e2e harness do.
+- **e2e:** `pnpm test:e2e` builds `dist-e2e` (`--mode e2e`, adds the `window.__e2e` seam) and runs Playwright against `vite preview` with the production headers.
+- **UNVERIFIED:** pnpm 12 on Vercel's build image (`vercel.json` installs it with npm; corepack cannot start pnpm 12); the File System Access API behaviour on the real plugin folder (Phase 2b).
