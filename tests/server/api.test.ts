@@ -288,23 +288,3 @@ describe('missing config and backups', () => {
     expect((await post('/api/backups/restore', { name: '../config.json' })).status).toBe(400);
   });
 });
-
-describe('lifecycle endpoints', () => {
-  test('heartbeat and bye reach the lifecycle with the tab id; bad ids are 400; the token is required', async () => {
-    const seen: string[] = [];
-    await srv.close();
-    srv = await startServer({
-      roots: [],
-      settingsDir: dataDir,
-      log: () => {},
-      assets: new Map(),
-      lifecycle: { heartbeat: (id) => seen.push('hb:' + id), bye: (id) => seen.push('bye:' + id) },
-    });
-    expect((await post('/api/heartbeat', { tab: 'tab-12345678' })).status).toBe(200);
-    expect((await post('/api/bye', { tab: 'tab-12345678' })).status).toBe(200);
-    expect(seen).toEqual(['hb:tab-12345678', 'bye:tab-12345678']);
-    expect((await post('/api/heartbeat', { tab: 'x' })).status).toBe(400);
-    expect((await post('/api/heartbeat', { tab: '../../etc/passwd' })).status).toBe(400);
-    expect((await request('/api/heartbeat', { method: 'POST', token: null, body: JSON.stringify({ tab: 'tab-12345678' }) })).status).toBe(403);
-  });
-});

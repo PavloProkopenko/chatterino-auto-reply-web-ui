@@ -4,6 +4,7 @@ import type { AddressInfo } from 'node:net';
 import * as v from 'valibot';
 import { normalise } from '../shared/config.ts';
 import { featuresFor } from '../shared/features.ts';
+import { SECURITY_HEADERS as SHARED_HEADERS } from '../shared/security-headers.ts';
 import { defaultRoots, discover, inspectConfigPath } from './discover.ts';
 import { createSettings, settingsDir } from './settings.ts';
 import { createStore } from './store.ts';
@@ -24,8 +25,8 @@ export interface AppOptions {
   assets?: Map<string, Asset>;
   /** Largest accepted request body. Default 5 MB. */
   maxBodyBytes?: number;
-  /** Receives the page's heartbeats and goodbyes (see lifecycle.ts). */
-  lifecycle?: { heartbeat(tabId: string): void; bye(tabId: string): void };
+  /** Fixed session token (the dev stack needs a stable one); default: random. */
+  token?: string;
 }
 
 export interface RunningServer {
@@ -38,24 +39,7 @@ export interface RunningServer {
 }
 
 const DEFAULT_MAX_BODY = 5 * 1024 * 1024;
-const CSP = [
-  "default-src 'none'",
-  "script-src 'self' 'wasm-unsafe-eval'",
-  "style-src 'self'",
-  "img-src 'self' data:",
-  "font-src 'self'",
-  "connect-src 'self'",
-  "worker-src 'self' blob:",
-  "base-uri 'none'",
-  "form-action 'none'",
-  "frame-ancestors 'none'",
-].join('; ');
-const SECURITY_HEADERS = {
-  'content-security-policy': CSP,
-  'x-content-type-options': 'nosniff',
-  'referrer-policy': 'no-referrer',
-  'cache-control': 'no-store',
-};
+const SECURITY_HEADERS = { ...SHARED_HEADERS, 'cache-control': 'no-store' };
 
 const digest = (s: string) => createHash('sha256').update(s).digest();
 const HASH = v.pipe(v.string(), v.regex(/^[0-9a-f]{64}$/));
@@ -63,15 +47,15 @@ const SelectBody = v.object({ path: v.pipe(v.string(), v.minLength(1), v.maxLeng
 // valibot's record() copies arrays into objects, so test the raw input instead.
 const PlainObject = v.custom<Record<string, unknown>>((o) => typeof o === 'object' && o !== null && !Array.isArray(o));
 const SaveBody = v.object({ baseHash: HASH, config: PlainObject });
-const TabBody = v.object({ tab: v.pipe(v.string(), v.regex(/^[\w-]{8,64}$/)) });
 const RestoreBody = v.object({ name: v.pipe(v.string(), v.maxLength(200)) });
 
 class HttpError extends Error {
-  constructor(
-    readonly status: number,
-    readonly code: string,
-  ) {
+  readonly status: number;
+  readonly code: string;
+  constructor(status: number, code: string) {
     super(code);
+    this.status = status;
+    this.code = code;
   }
 }
 
@@ -82,7 +66,7 @@ export async function startServer(opts: AppOptions = {}): Promise<RunningServer>
   const settings = createSettings(opts.settingsDir ?? settingsDir(process.platform, process.env));
   const store = createStore();
   const roots = opts.roots ?? defaultRoots(process.platform, process.env);
-  const token = randomBytes(32).toString('hex');
+  const token = opts.token ?? randomBytes(32).toString('hex');
   const tokenDigest = digest(token);
   // The confirmed config file. Remembered paths count as confirmed; auto-detection alone does not.
   let selected: string | null = (await settings.read()).configPath ?? null;
@@ -161,18 +145,6 @@ export async function startServer(opts: AppOptions = {}): Promise<RunningServer>
         await readJson(req, PlainObject);
         const r = await store.createDefault(path);
         return { status: r.status === 'created' ? 201 : 409, body: r };
-      },
-    },
-    '/api/heartbeat': {
-      POST: async (req) => {
-        opts.lifecycle?.heartbeat((await readJson(req, TabBody)).tab);
-        return { body: { ok: true } };
-      },
-    },
-    '/api/bye': {
-      POST: async (req) => {
-        opts.lifecycle?.bye((await readJson(req, TabBody)).tab);
-        return { body: { ok: true } };
       },
     },
     '/api/backups': {

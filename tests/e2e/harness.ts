@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test as base, expect, type Page } from '@playwright/test';
 
-const exe = join(import.meta.dirname, '../../dist', process.platform === 'win32' ? 'auto-reply-web-e2e.exe' : 'auto-reply-web-e2e');
+const devstack = join(import.meta.dirname, '../../scripts/devstack.ts');
 
 export const sampleConfig = (over: Record<string, unknown> = {}) =>
   JSON.stringify(
@@ -45,7 +45,8 @@ export interface App {
 export interface StartOptions {
   config?: string | null; // null: plugin installed but no config file yet
   pluginVersion?: string;
-  noExit?: boolean;
+  /** Serve through the Vite dev server (source modules, no CSP) instead of the production build. */
+  dev?: boolean;
 }
 
 export async function startApp(opts: StartOptions = {}): Promise<App> {
@@ -57,18 +58,22 @@ export async function startApp(opts: StartOptions = {}): Promise<App> {
   const configPath = join(pluginDir, 'data', 'config.json');
   if (opts.config !== null) await writeFile(configPath, opts.config ?? sampleConfig());
 
-  const child: ChildProcess = spawn(exe, [], {
-    env: {
-      ...process.env,
-      AUTO_REPLY_WEB_ROOTS: join(tmp, 'roots'),
-      AUTO_REPLY_WEB_DATA: dataDir,
-      AUTO_REPLY_WEB_NO_BROWSER: '1',
-      ...(opts.noExit === false ? {} : { AUTO_REPLY_WEB_NO_EXIT: '1' }),
-    },
-  });
+  // The production build (dist-e2e, made by `pnpm test:e2e`) behind `vite preview` with the real CSP, plus the API stand-in.
+  const child: ChildProcess = spawn(
+    process.execPath,
+    opts.dev
+      ? ['--experimental-strip-types', '--no-warnings', devstack, 'dev', '--no-open', '--port', '5199', '--roots', join(tmp, 'roots'), '--data', dataDir]
+      : ['--experimental-strip-types', '--no-warnings', devstack, 'preview', '--mode', 'e2e', '--no-build', '--roots', join(tmp, 'roots'), '--data', dataDir],
+    { env: process.env },
+  );
   const exited = new Promise<number | null>((res) => child.on('exit', (code) => res(code)));
   const url = await new Promise<string>((resolve, reject) => {
-    child.stdout!.once('data', (d) => resolve(String(d).split('\n')[0]!));
+    let seen = '';
+    child.stdout!.on('data', (d) => {
+      seen += String(d);
+      const line = seen.split('\n').find((l) => l.startsWith('http://'));
+      if (line) resolve(line);
+    });
     child.on('error', reject);
     setTimeout(() => reject(new Error('server did not start')), 10_000);
   });

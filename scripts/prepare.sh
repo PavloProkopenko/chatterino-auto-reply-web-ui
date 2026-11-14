@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Prepare a developer machine (macOS/Linux): portable Node + pinned pnpm into ./.tools, dependencies from the
-# lockfile, then lint, unit tests, vendor drift check and a build smoke test. Idempotent, no admin rights.
+# Prepare a developer machine (macOS/Linux): pnpm pinned into ./.tools (a portable Node >= 22 is downloaded there if
+# missing), dependencies from the lockfile, then lint, typecheck, tests, vendor drift check, production build and e2e. Idempotent, no admin rights.
 #   scripts/prepare.sh            do everything
 #   scripts/prepare.sh --check    only report what is missing
 #   scripts/prepare.sh --ci       same as default (the script never prompts)
@@ -61,7 +61,7 @@ cd "$ROOT"
 "$PNPM" typecheck
 "$PNPM" test
 "$PNPM" sync-plugin:check
-"$PNPM" build:smoke
+"$PNPM" build
 if [[ $E2E -eq 1 ]]; then
   export PLAYWRIGHT_BROWSERS_PATH="$TOOLS/browsers"
   "$PNPM" exec playwright install chromium
