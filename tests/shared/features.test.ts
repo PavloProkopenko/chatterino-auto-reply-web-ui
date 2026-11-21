@@ -15,6 +15,11 @@ describe('featuresFor (CONTRACT section 5)', () => {
   test('0.5.0 has everything', () => {
     expect(featuresFor('0.5.0')).toMatchObject({ names: true, ruleChannels: true, timerConditions: true, skipUsers: true, newerThanKnown: false });
   });
+  test('auto reload exists since 0.7.0', () => {
+    expect(featuresFor('0.6.1').autoReload).toBe(false);
+    expect(featuresFor('0.7.0').autoReload).toBe(true);
+    expect(featuresFor(null).autoReload).toBe(false);
+  });
   test('0.4.0 lacks skip_mods / skip_users', () => {
     expect(featuresFor('0.4.0')).toMatchObject({ names: true, ruleChannels: true, timerConditions: true, skipUsers: false });
   });
@@ -23,7 +28,7 @@ describe('featuresFor (CONTRACT section 5)', () => {
   });
   test('a plugin newer than the UI knows is fully enabled but flagged', () => {
     expect(featuresFor('0.9.0')).toMatchObject({ skipUsers: true, newerThanKnown: true });
-    expect(KNOWN_PLUGIN_VERSION).toBe('0.5.0');
+    expect(KNOWN_PLUGIN_VERSION).toBe('0.7.2');
   });
   test('an unknown version (no info.json) enables nothing optional and says so', () => {
     expect(featuresFor(null)).toMatchObject({ names: false, skipUsers: false, versionKnown: false });

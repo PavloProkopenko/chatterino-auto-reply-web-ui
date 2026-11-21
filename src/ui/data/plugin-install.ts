@@ -3,7 +3,7 @@ import type { PluginDir } from './ports.ts';
 import { sha256 } from './store.ts';
 
 // Installs and updates the plugin's own files (Lua source + info.json) in a folder the user picked.
-// Never touches data/ (the config), .backup/, subfolders such as tests/, or files it does not know.
+// Never touches the config in data/ (only the data/.external and data/.plugin-update markers), .backup/, subfolders such as tests/, or files it does not know.
 // Never logs: nothing here needs file contents in a log.
 
 export interface PluginBundle {
@@ -51,6 +51,8 @@ const PLUGIN_NAME = 'Auto Reply';
 const BACKUP_DIR = '.backup';
 const BACKUP_META = 'backup.json';
 const MARKER = 'data/.external';
+/** The plugin cannot read info.json (its io is limited to data/), so after a code change the site leaves the new version here; the plugin tells the user to restart it while it differs from the running version. */
+const UPDATE_MARKER = 'data/.plugin-update';
 
 const isCodeFile = (name: string) => name.endsWith('.lua') || name === 'info.json';
 
@@ -134,6 +136,7 @@ export async function updatePlugin(dir: PluginDir, bundle: PluginBundle, now: ()
   try {
     const backup = await backupCode(dir, now); // a failure here stops before anything is overwritten
     await writeBundle(dir, bundle);
+    await dir.write(UPDATE_MARKER, bundle.version);
     return { status: 'updated', from: backup.version ?? 'unknown', backup: backup.name };
   } catch (e) {
     return { status: 'failed', message: message(e) };
@@ -168,6 +171,8 @@ export async function rollbackPlugin(dir: PluginDir, now: () => number = Date.no
     const current = await backupCode(dir, now);
     for (const name of Object.keys(texts).sort().filter((n) => n !== 'info.json')) await dir.write(name, texts[name]!);
     if (texts['info.json'] !== undefined) await dir.write('info.json', texts['info.json']);
+    const restored = newest.version;
+    if (restored) await dir.write(UPDATE_MARKER, restored);
     return { status: 'rolled-back', restored: newest.version ?? newest.name, backup: current.name };
   } catch (e) {
     return { status: 'failed', message: message(e) };

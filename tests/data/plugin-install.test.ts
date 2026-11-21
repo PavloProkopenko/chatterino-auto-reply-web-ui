@@ -77,6 +77,7 @@ describe('updatePlugin and rollbackPlugin', () => {
     for (const [n, f] of Object.entries(old.files)) expect(dir.files.get(`.backup/0.9.0/${n}`)).toBe(f.text);
     expect(dir.files.get('.backup/0.9.0/gone.lua')).toBe('-- removed later\n');
     for (const k of ['data/config.json', 'data/.external', 'notes.txt', 'tests/secret.lua', 'gone.lua']) expect(dir.files.get(k)).toBe(before.get(k));
+    expect(dir.files.get('data/.plugin-update')).toBe('1.0.0'); // the plugin's restart hint reads this
     expect((await inspectPlugin(dir, next)).state).toBe('current');
   });
   test('a failed backup stops the update before anything is overwritten', async () => {

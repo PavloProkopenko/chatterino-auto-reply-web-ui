@@ -111,7 +111,7 @@ $('write-config').addEventListener('click', async () => {
     await stream.close();
     const after = await readText(handle);
     log(`OK: записано ${after.size} байт, содержимое ${after.text === before.text ? 'совпадает с исходным' : 'ОТЛИЧАЕТСЯ!'}; время изменения ${before.modified} -> ${after.modified}`);
-    log('Теперь в Leafyrino выполните /autoreply reload и посмотрите, нет ли предупреждений и файла config.json.bad.');
+    log('Теперь подождите несколько секунд (плагин 0.7.0+) или выполните /autoreply reload в Leafyrino и посмотрите, нет ли предупреждений и файла config.json.bad.');
     const names: string[] = [];
     for await (const [name] of data.entries()) names.push(name);
     log(`Файлы в data сейчас: ${names.join(', ')} (временных файлов вроде .crswap быть не должно)`);

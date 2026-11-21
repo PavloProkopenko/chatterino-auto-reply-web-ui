@@ -1,5 +1,5 @@
 /** The newest plugin version this UI knows about (docs/CONTRACT.md section 5). */
-export const KNOWN_PLUGIN_VERSION = '0.5.0';
+export const KNOWN_PLUGIN_VERSION = '0.7.2';
 
 export interface Features {
   versionKnown: boolean;
@@ -11,6 +11,8 @@ export interface Features {
   timerConditions: boolean;
   /** `skip_mods` and `skip_users`. */
   skipUsers: boolean;
+  /** The plugin re-reads config.json by itself (no /autoreply reload), since 0.7.0. */
+  autoReload: boolean;
   /** The plugin is newer than this UI: unknown fields are preserved but may not be editable. */
   newerThanKnown: boolean;
 }
@@ -27,11 +29,11 @@ export function compareVersions(a: string, b: string): number {
   return 0;
 }
 
-const SINCE = { names: '0.2.1', ruleChannels: '0.3.0', timerConditions: '0.4.0', skipUsers: '0.5.0' } as const;
+const SINCE = { names: '0.2.1', ruleChannels: '0.3.0', timerConditions: '0.4.0', skipUsers: '0.5.0', autoReload: '0.7.0' } as const;
 
 export function featuresFor(version: string | null): Features {
   if (version === null || parse(version) === null) {
-    return { versionKnown: false, names: false, ruleChannels: false, timerConditions: false, skipUsers: false, newerThanKnown: false };
+    return { versionKnown: false, names: false, ruleChannels: false, timerConditions: false, skipUsers: false, autoReload: false, newerThanKnown: false };
   }
   const has = (since: string) => compareVersions(version, since) >= 0;
   return {
@@ -40,6 +42,7 @@ export function featuresFor(version: string | null): Features {
     ruleChannels: has(SINCE.ruleChannels),
     timerConditions: has(SINCE.timerConditions),
     skipUsers: has(SINCE.skipUsers),
+    autoReload: has(SINCE.autoReload),
     newerThanKnown: compareVersions(version, KNOWN_PLUGIN_VERSION) > 0,
   };
 }

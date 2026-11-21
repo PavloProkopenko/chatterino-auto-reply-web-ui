@@ -80,7 +80,7 @@ export const DEFAULTS = {
   protect_users: [],
   per_user_cooldown: 60,
   per_rule_cooldown: 10,
-  global_min_gap: 2,
+  global_min_gap: 1,
   only_when_live: false,
   skip_mods: false,
   mute_lurkers: false,

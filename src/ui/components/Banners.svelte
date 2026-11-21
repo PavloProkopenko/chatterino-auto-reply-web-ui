@@ -15,6 +15,7 @@
       /* the command is shown on screen and can be selected by hand */
     }
   }
+  const auto = $derived(session.source?.features?.autoReload === true);
   const droppedLive = $derived(droppedLiveTimers(session.lastSave?.notes ?? []));
   const timerName = (id: number) => {
     const t = session.current?.timers.find((x) => x.id === id);
@@ -41,13 +42,13 @@
       <Icon name="check" />
       <div class="body">
         {#if session.source?.canSaveInPlace}
-          <p><strong>{ru.reload.title}</strong> {ru.reload.body}</p>
+          <p><strong>{ru.reload.title}</strong> {auto ? ru.reload.autoBody : ru.reload.body}</p>
         {:else if session.source?.kind === 'demo'}
           <p><strong>{ru.reload.downloadedTitle}</strong> {ru.notice.demoMode}</p>
         {:else}
-          <p><strong>{ru.reload.downloadedTitle}</strong> {ru.reload.downloadedBody}</p>
+          <p><strong>{ru.reload.downloadedTitle}</strong> {auto ? ru.reload.autoDownloadedBody : ru.reload.downloadedBody}</p>
         {/if}
-        <div class="row" class:hidden={session.source?.kind === 'demo'}>
+        <div class="row" class:hidden={session.source?.kind === 'demo' || auto}>
           <code class="cmd mono" translate="no">{ru.reload.command}</code>
           <button class="btn small" type="button" onclick={copyCommand}><Icon name={copied ? 'check' : 'copy'} size={16} />{copied ? ru.reload.copied : ru.reload.copy}</button>
         </div>
@@ -59,7 +60,8 @@
           </div>
           <p class="help">{ru.reload.placeHelp}</p>
         {/if}
-        <p class="help">{ru.reload.note}</p>
+        {#if !auto}<p class="help">{ru.reload.note}</p>{/if}
+        {#if !auto && session.source?.features?.versionKnown}<p class="help">{ru.reload.oldPluginHint}</p>{/if}
         {#if session.lastSave?.merged}<p class="help">{ru.reload.merged}</p>{/if}
         {#each droppedLive as id (id)}<p class="warn-line"><Icon name="alert" size={14} />{ru.timers.droppedLive(timerName(id))}</p>{/each}
         {#if session.lastSave?.backup && session.source?.kind !== 'demo'}<p class="help">{ru.reload.backup}</p>{/if}
