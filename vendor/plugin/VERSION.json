@@ -1,12 +1,12 @@
 {
   "plugin": "Auto Reply",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "files": {
-    "commands.lua": "f7ba6316871c25b1a53409f3c4b721aa6fcb6e32224311f74ef52f6d209e5a79",
+    "commands.lua": "0bd7fa9913e506ef20f9e7c94bdf9642418599f5dfea2fbab89572f7a802962c",
     "complete.lua": "cca88a44223cc5980cb38b97ee192dbdf2840825732ac9062c96f1803c983f38",
-    "config.lua": "d9f36a86a5620208bd2fb42e1a1d0cb9c1628a5d63e9e0be7b3a78401c10abfa",
-    "engine.lua": "ff273ed5fc5a1517de8aa2fcde57d450db86826a2c379bac8491c1fa23502277",
-    "info.json": "8f679e2a2e3307db91a100da47d2294f0faeb80a2583ccae14e245612ea2b84d",
+    "config.lua": "85881c7aa8fb462635b71b9118e5b971f4961e00c223552ccc8fef9e1fb20f06",
+    "engine.lua": "683a096778b1e471da9f9feb0e944dbd8a35777caf75f302d90aa8eaff8ae197",
+    "info.json": "ece9a35dc9200ab3d47227780ef0d79ded4a82a8f48d7b15af9eec6a011edd5d",
     "init.lua": "18478c0c3aad499d4cff06dfe538ad68f3c4c48279dbd009d0f2d6a46c3fb7dd",
     "names.lua": "e4a951e7a06b25321cfc7b55def9e1c34fc0f34104b8d8a4c8ee97d17e2095f4",
     "rules.lua": "4fae0aae0c5c76b70682c994d34ab2d458ebd15cf1b6974a723e093d3bcc01a4",
