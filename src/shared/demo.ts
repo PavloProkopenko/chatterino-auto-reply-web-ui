@@ -16,6 +16,7 @@ export function demoConfigText(): string {
     skip_mods: false,
     mute_lurkers: false,
     backfire: true,
+    helix_enabled: false,
     next_rule_id: 3,
     rules: [
       { id: 1, name: 'донат', enabled: true, reply: 'Донаты тут: {user}', channels: [], conditions: [{ type: 'word', match: 'донат' }] },

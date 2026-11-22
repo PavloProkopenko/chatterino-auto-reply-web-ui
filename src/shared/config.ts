@@ -63,6 +63,7 @@ export interface Config {
   skip_mods: boolean;
   mute_lurkers: boolean;
   backfire: boolean;
+  helix_enabled: boolean;
   next_rule_id: number;
   rules: Rule[];
   next_timer_id: number;
@@ -85,6 +86,7 @@ export const DEFAULTS = {
   skip_mods: false,
   mute_lurkers: false,
   backfire: true,
+  helix_enabled: false,
   next_rule_id: 1,
   rules: [],
   next_timer_id: 1,
