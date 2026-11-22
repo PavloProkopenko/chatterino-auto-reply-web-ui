@@ -1,11 +1,12 @@
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 import { expect, openSite, pickPluginFolder, sampleConfig, test, watchPage } from './harness.ts';
+import { TWITCH_CLIENT_ID, TWITCH_SCOPES } from '../../src/shared/twitch.ts';
 import { mockTwitch } from './twitch-mock.ts';
 
 // 0.8.2 is the plugin that has the Twitch API and notices a login made on the site.
 const VERSION = '0.8.2';
-const CLIENT = JSON.stringify({ client_id: 'cid1234567' }); // the site's own Client ID is not set yet: helix.json carries it
+const CLIENT = JSON.stringify({ client_id: 'cid1234567' }); // a client_id already in helix.json wins over the site's own
 const LOGGED_IN = JSON.stringify({ client_id: 'cid1234567', access_token: 'AT-SECRET', refresh_token: 'RT-SECRET', expires_at: 1_900_000_000, user_id: '1000', login: 'streamer', scopes: [] });
 const status = (page: Page) => page.getByTestId('twitch-status');
 const login = (page: Page) => page.getByRole('button', { name: 'Войти через Twitch' });
@@ -69,12 +70,23 @@ test('login: a refusal on the Twitch page is explained', async ({ page }) => {
   await expect(status(page)).toContainText('Вход не выполнен');
 });
 
-test('login without any Client ID says so and sends nothing', async ({ page }) => {
-  const twitch = await mockTwitch(page);
+test('login uses the Client ID built into the site when helix.json has none, and the stored one when it has', async ({ page }) => {
+  const twitch = await mockTwitch(page, { pending: 99 });
   await open(page, { helix: null });
   await login(page).click();
-  await expect(page.getByRole('alert').filter({ hasText: 'не задан Client ID' })).toBeVisible();
-  expect(twitch.calls).toEqual([]);
+  await expect(page.getByTestId('twitch-code')).toBeVisible();
+  expect(new URLSearchParams(twitch.deviceBodies[0]).get('client_id')).toBe(TWITCH_CLIENT_ID);
+  expect(new URLSearchParams(twitch.deviceBodies[0]).get('scopes')).toBe(TWITCH_SCOPES);
+  await page.getByRole('button', { name: 'Отмена' }).click();
+  await expect(page.getByTestId('twitch-code')).toHaveCount(0);
+});
+
+test('login uses the Client ID stored in helix.json first', async ({ page }) => {
+  const twitch = await mockTwitch(page, { pending: 99 });
+  await open(page, { helix: CLIENT });
+  await login(page).click();
+  await expect(page.getByTestId('twitch-code')).toBeVisible();
+  expect(new URLSearchParams(twitch.deviceBodies[0]).get('client_id')).toBe('cid1234567');
 });
 
 test('logout: the token is removed from helix.json (client id stays) and revoked at Twitch', async ({ page }) => {

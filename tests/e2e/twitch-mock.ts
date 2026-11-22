@@ -5,6 +5,8 @@ export interface TwitchMock {
   calls: string[];
   /** Bodies posted to /oauth2/revoke. */
   revoked: string[];
+  /** Bodies posted to /oauth2/device (the client id and scopes the site asked with). */
+  deviceBodies: string[];
 }
 
 export interface TwitchMockOptions {
@@ -22,7 +24,7 @@ const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers
  * validate call sends an Authorization header, which makes the browser ask first. interval 1 keeps tests fast.
  */
 export async function mockTwitch(page: Page, opts: TwitchMockOptions = {}): Promise<TwitchMock> {
-  const mock: TwitchMock = { calls: [], revoked: [] };
+  const mock: TwitchMock = { calls: [], revoked: [], deviceBodies: [] };
   let polls = 0;
   await page.route('https://id.twitch.tv/**', async (route) => {
     const req = route.request();
@@ -30,6 +32,7 @@ export async function mockTwitch(page: Page, opts: TwitchMockOptions = {}): Prom
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 200, headers: CORS });
     mock.calls.push(`${req.method()} ${path}`);
     const json = (status: number, body: unknown) => route.fulfill({ status, headers: { ...CORS, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    if (path === '/oauth2/device') mock.deviceBodies.push(req.postData() ?? '');
     if (path === '/oauth2/device') return json(200, { device_code: 'DC', user_code: 'ABCD-EFGH', verification_uri: 'https://www.twitch.tv/activate?device-code=ABCD', expires_in: 1800, interval: 1 });
     if (path === '/oauth2/token') {
       polls += 1;
