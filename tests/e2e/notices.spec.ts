@@ -67,5 +67,16 @@ test('phone width: the popup fits the screen', async ({ page }) => {
   const box = await popup(page).boundingBox();
   expect(box!.x).toBeGreaterThanOrEqual(0);
   expect(box!.x + box!.width).toBeLessThanOrEqual(375);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
+  // name the culprits in the failure message: this only ever failed on CI, where fonts and scrollbars differ
+  const overflow = await page.evaluate(() => {
+    const de = document.documentElement;
+    if (de.scrollWidth <= de.clientWidth) return [];
+    const out = [`scrollWidth=${de.scrollWidth} clientWidth=${de.clientWidth}`];
+    for (const el of Array.from(document.querySelectorAll('body *'))) {
+      const b = el.getBoundingClientRect();
+      if (b.right > de.clientWidth + 0.5) out.push(`${el.tagName.toLowerCase()}.${(el as HTMLElement).className} right=${Math.round(b.right)} width=${Math.round(b.width)}`);
+    }
+    return out.slice(0, 12);
+  });
+  expect(overflow).toEqual([]);
 });
