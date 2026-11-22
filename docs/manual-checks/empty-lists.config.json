@@ -10,6 +10,7 @@
   "skip_mods": false,
   "mute_lurkers": false,
   "backfire": true,
+  "helix_enabled": false,
   "next_rule_id": 2,
   "rules": [
     {
