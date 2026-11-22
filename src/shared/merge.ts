@@ -16,7 +16,7 @@ export type MergeResult = { ok: true; config: Config; notes: MergeNote[] } | { o
 /** Fields the plugin owns while it runs; the UI only changes them through an explicit action (enable timer). */
 const LIVE_TOP = new Set(['active_until']);
 const LIVE_TIMER = new Set(['enabled', 'started_at', 'game_id']);
-const STRING_LISTS = new Set(['channels', 'ignore_users', 'protect_users']);
+const STRING_LISTS = new Set(['channels', 'ignore_users', 'protect_users', 'unprotect_users']);
 const ITEM_LISTS = new Set(['rules', 'timers', 'redeems']);
 const COUNTERS = new Set(['next_rule_id', 'next_timer_id', 'next_redeem_id']);
 

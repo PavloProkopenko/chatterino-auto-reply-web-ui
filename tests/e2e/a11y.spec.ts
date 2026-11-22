@@ -93,6 +93,8 @@ test('everything works with the keyboard alone, focus is visible and the dialog 
   await page.keyboard.press('Enter');
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
+  // focus moves into the dialog a moment after it opens; tabbing before that flaked under load (CI)
+  await expect.poll(() => page.evaluate(() => !!document.activeElement?.closest('dialog'))).toBe(true);
   for (let i = 0; i < 6; i++) await page.keyboard.press('Tab');
   expect(await page.evaluate(() => !!document.activeElement?.closest('dialog'))).toBe(true); // focus stays inside
   await page.keyboard.press('Escape');

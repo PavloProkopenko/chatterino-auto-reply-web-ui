@@ -15,6 +15,7 @@
     channels: ru.settings.lists.channels,
     ignore_users: ru.settings.lists.ignore,
     protect_users: ru.settings.lists.protect,
+    unprotect_users: ru.settings.protect.unprotectLabel,
   };
   let choices = $state<Resolutions>({});
   const conflicts = $derived(session.conflict?.conflicts ?? []);

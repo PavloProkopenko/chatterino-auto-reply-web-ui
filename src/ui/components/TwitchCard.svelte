@@ -1,5 +1,6 @@
 <script lang="ts">
   import { ru } from '../../i18n/ru.ts';
+  import { SCOPE_MODERATED_CHANNELS } from '../../shared/twitch.ts';
   import { session, twitch } from '../state/app.svelte.ts';
   import type { TwitchError } from '../state/twitch.svelte.ts';
   import Icon from './Icon.svelte';
@@ -59,6 +60,10 @@
         <span class="dot"></span><strong>{T.loggedOut}</strong>
       {/if}
     </p>
+
+    {#if twitch.status?.loggedIn && !twitch.status.scopes.includes(SCOPE_MODERATED_CHANNELS)}
+      <p class="help" data-testid="twitch-relogin"><Icon name="alert" size={14} />{T.reloginHint}</p>
+    {/if}
 
     {#if twitch.phase === 'waiting' && twitch.code}
       <div class="stack" data-testid="twitch-code">

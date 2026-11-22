@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import type { FlowDeps, StoredLogin } from '../../src/ui/data/twitch-flow.ts';
-import { clearHelixLogin, logoutHelix, readHelixStatus, writeHelixLogin } from '../../src/ui/data/helix-file.ts';
+import { clearHelixLogin, logoutHelix, readHelixStatus, withHelixToken, writeHelixLogin } from '../../src/ui/data/helix-file.ts';
 import { MemoryDir } from './memory-dir.ts';
 
 const FILE = 'data/helix.json';
@@ -9,20 +9,53 @@ const parsed = async (dir: MemoryDir) => JSON.parse((await dir.read(FILE))!) as 
 
 describe('readHelixStatus', () => {
   test('no file, empty file, garbage: logged out, nothing thrown', async () => {
-    expect(await readHelixStatus(new MemoryDir())).toEqual({ loggedIn: false, login: null, clientId: null });
-    expect(await readHelixStatus(new MemoryDir({ [FILE]: '' }))).toEqual({ loggedIn: false, login: null, clientId: null });
-    expect(await readHelixStatus(new MemoryDir({ [FILE]: '{ not json' }))).toEqual({ loggedIn: false, login: null, clientId: null });
-    expect(await readHelixStatus(new MemoryDir({ [FILE]: '[1,2]' }))).toEqual({ loggedIn: false, login: null, clientId: null });
+    expect(await readHelixStatus(new MemoryDir())).toEqual({ loggedIn: false, login: null, clientId: null, userId: null, scopes: [] });
+    expect(await readHelixStatus(new MemoryDir({ [FILE]: '' }))).toEqual({ loggedIn: false, login: null, clientId: null, userId: null, scopes: [] });
+    expect(await readHelixStatus(new MemoryDir({ [FILE]: '{ not json' }))).toEqual({ loggedIn: false, login: null, clientId: null, userId: null, scopes: [] });
+    expect(await readHelixStatus(new MemoryDir({ [FILE]: '[1,2]' }))).toEqual({ loggedIn: false, login: null, clientId: null, userId: null, scopes: [] });
   });
   test('a stored login is reported without any token', async () => {
     const dir = new MemoryDir({ [FILE]: JSON.stringify(login) });
     const status = await readHelixStatus(dir);
-    expect(status).toEqual({ loggedIn: true, login: 'streamer', clientId: 'cid1234567' });
+    expect(status).toEqual({ loggedIn: true, login: 'streamer', clientId: 'cid1234567', userId: '1000', scopes: ['moderation:read'] });
     expect(JSON.stringify(status)).not.toContain('SECRET');
   });
   test('only a client id (set by `helix clientid` in chat) is not a login', async () => {
     const dir = new MemoryDir({ [FILE]: JSON.stringify({ client_id: 'cid1234567' }) });
-    expect(await readHelixStatus(dir)).toEqual({ loggedIn: false, login: null, clientId: 'cid1234567' });
+    expect(await readHelixStatus(dir)).toEqual({ loggedIn: false, login: null, clientId: 'cid1234567', userId: null, scopes: [] });
+  });
+});
+
+describe('withHelixToken', () => {
+  test('hands the token to the callback for that one call and returns only what the callback returns', async () => {
+    const dir = new MemoryDir({ [FILE]: JSON.stringify(login) });
+    let seen: unknown = null;
+    const out = await withHelixToken(dir, async (auth) => {
+      seen = auth;
+      return 'result';
+    });
+    expect(out).toEqual({ status: 'ok', value: 'result' });
+    expect(seen).toEqual({ token: 'AT-SECRET', clientId: 'cid1234567', userId: '1000', login: 'streamer' });
+    expect(JSON.stringify(out)).not.toContain('SECRET');
+  });
+  test('not logged in: the callback is never called', async () => {
+    let called = false;
+    const cases: Record<string, string>[] = [{}, { [FILE]: JSON.stringify({ client_id: 'cid1234567' }) }, { [FILE]: '{ nope' }];
+    for (const files of cases) {
+      const out = await withHelixToken(new MemoryDir(files), async () => void (called = true));
+      expect(out).toEqual({ status: 'notLoggedIn' });
+    }
+    expect(called).toBe(false);
+  });
+  test('a login without a client id or user id cannot call Twitch', async () => {
+    const dir = new MemoryDir({ [FILE]: JSON.stringify({ access_token: 'AT-SECRET', login: 'streamer' }) });
+    expect(await withHelixToken(dir, async () => 1)).toEqual({ status: 'notLoggedIn' });
+  });
+  test('the file is not changed by reading the token', async () => {
+    const dir = new MemoryDir({ [FILE]: JSON.stringify(login) });
+    const before = await dir.read(FILE);
+    await withHelixToken(dir, async () => 1);
+    expect(await dir.read(FILE)).toBe(before);
   });
 });
 

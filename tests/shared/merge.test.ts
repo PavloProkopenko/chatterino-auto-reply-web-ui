@@ -23,6 +23,19 @@ const merged = (b: Config, t: Config, m: Config) => {
   return r;
 };
 
+describe('unprotect_users (plugin 0.9.0) merges per user like the other lists', () => {
+  test('additions on both sides are kept, a removal on one side wins over no change', () => {
+    const b = start({ protect_users: ['mod1'], unprotect_users: ['vip1', 'vip2'] });
+    const mine = copy(b, (c) => (c.unprotect_users = ['vip1', 'vip2', 'vip3']));
+    const theirs = copy(b, (c) => (c.unprotect_users = ['vip2', 'vip4'])); // the plugin: vip1 removed, vip4 added
+    expect(merged(b, theirs, mine).config.unprotect_users.sort()).toEqual(['vip2', 'vip3', 'vip4']);
+  });
+  test('a file without the key reads as an empty list', () => {
+    expect(normalise({}).unprotect_users).toEqual([]);
+    expect(normalise({ unprotect_users: {} }).unprotect_users).toEqual([]);
+  });
+});
+
 describe('mergeConfigs', () => {
   test('no edits on either side gives the disk version', () => {
     const b = start();

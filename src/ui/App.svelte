@@ -16,7 +16,7 @@
   import Settings from './pages/Settings.svelte';
   import TimerEditPage from './pages/TimerEditPage.svelte';
   import Timers from './pages/Timers.svelte';
-  import { session, twitch } from './state/app.svelte.ts';
+  import { modCheck, protectFetch, session, twitch } from './state/app.svelte.ts';
   import { router } from './state/route.svelte.ts';
 
   // about every 10 s; the e2e build sets VITE_POLL_MS to something short so tests need not wait
@@ -64,6 +64,13 @@
   $effect(() => {
     void session.pluginFolder;
     void twitch.refresh();
+  });
+
+  // what was asked of Twitch belongs to one account: drop it when the account changes or logs out
+  $effect(() => {
+    void twitch.status?.login;
+    modCheck.reset();
+    protectFetch.reset();
   });
 </script>
 

@@ -22,7 +22,7 @@ Everything here was verified against the plugin source in `../auto-reply-plugin/
 - `config.load` sanitises silently (drops invalid timers/redeems/names, disables rules with unusable channels and timers with unusable conditions (it does **not** validate rule conditions or replies: such a rule is kept and simply never matches; it also forces `enabled=false` on a timer without a numeric `started_at` and drops a redeem without a title or with a duration outside 1 s to 14 d; checked on the vendored 0.5.0 `config.lua`), corrupt file is backed up as `config.json.bad`). The UI should show what the plugin would drop, not hide it.
 
 ## 3. Schema (v1, plugin 0.5.0)
-Global: `version` (1), `active_until` (nil | `"forever"` | unix seconds; **live state, do not edit**), `channels[]` (logins), `ignore_users[]`, `protect_users[]`, `per_user_cooldown` (s, default 60), `per_rule_cooldown` (10), `global_min_gap` (>= 1, default 2), `only_when_live` (bool), `skip_mods` (bool, default false), `mute_lurkers` (bool, false), `backfire` (bool, true), `helix_enabled` (bool, false; opt-in Twitch API, set in chat with `set helix on`; the token lives in `data/helix.json`, never in config.json), `next_rule_id`, `next_timer_id`, `next_redeem_id` (ids are never reused: the UI must keep these counters correct).
+Global: `version` (1), `active_until` (nil | `"forever"` | unix seconds; **live state, do not edit**), `channels[]` (logins), `ignore_users[]`, `protect_users[]`, `unprotect_users[]` (plugin 0.9.0: logins that MAY be muted although a mod badge, `protect_users` or the bot list would protect them; the channel owner and the account itself are always protected), `per_user_cooldown` (s, default 60), `per_rule_cooldown` (10), `global_min_gap` (>= 1, default 2), `only_when_live` (bool), `skip_mods` (bool, default false), `mute_lurkers` (bool, false), `backfire` (bool, true), `helix_enabled` (bool, false; opt-in Twitch API, set in chat with `set helix on`; the token lives in `data/helix.json`, never in config.json), `next_rule_id`, `next_timer_id`, `next_redeem_id` (ids are never reused: the UI must keep these counters correct).
 
 `rules[]`: `{ id, name?, enabled, reply, channels[] (empty = all channels), conditions[{type, match?}], skip_mods? (true|false|absent = follow global), skip_users[]? }`. Legacy: `type`/`match` directly on the rule = one condition (`rules.conditions`). Order matters: **first matching rule wins**.
 
@@ -53,6 +53,7 @@ Not part of `config.json`. Keys: `client_id`, `access_token`, `refresh_token`, `
 | `skip_mods` / `skip_users` | 0.5.0 |
 | Twitch API (`helix_enabled`, `data/helix.json`) | 0.8.0 |
 | plugin re-reads `data/helix.json` while running | 0.8.2 |
+| `unprotect_users` (mute exceptions) | 0.9.0 |
 Older plugin + newer feature = the UI disables the control and explains why. Newer plugin than the UI knows = open read/write with a "some settings may be preserved but not editable" notice.
 
 ## 6. Recommended plugin change (not part of the web project; needs the owner's go-ahead)

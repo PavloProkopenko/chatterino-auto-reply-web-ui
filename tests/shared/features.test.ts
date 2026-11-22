@@ -27,8 +27,8 @@ describe('featuresFor (CONTRACT section 5)', () => {
     expect(featuresFor('0.2.0')).toMatchObject({ names: false, ruleChannels: false, timerConditions: false, skipUsers: false });
   });
   test('a plugin newer than the UI knows is fully enabled but flagged', () => {
-    expect(featuresFor('0.9.0')).toMatchObject({ skipUsers: true, newerThanKnown: true });
-    expect(KNOWN_PLUGIN_VERSION).toBe('0.8.1');
+    expect(featuresFor('1.0.0')).toMatchObject({ skipUsers: true, newerThanKnown: true });
+    expect(KNOWN_PLUGIN_VERSION).toBe('0.9.0');
   });
   test('the "known" version can be the bundled one: the installed plugin is not flagged as newer than the bundle it equals', () => {
     expect(featuresFor('0.8.2', '0.8.2').newerThanKnown).toBe(false);
@@ -39,6 +39,11 @@ describe('featuresFor (CONTRACT section 5)', () => {
     expect(featuresFor('0.8.1').helixSync).toBe(false);
     expect(featuresFor('0.8.2').helixSync).toBe(true);
     expect(featuresFor(null).helixSync).toBe(false);
+  });
+  test('mute exceptions (unprotect_users) exist since 0.9.0', () => {
+    expect(featuresFor('0.8.3').protectOverride).toBe(false);
+    expect(featuresFor('0.9.0').protectOverride).toBe(true);
+    expect(featuresFor(null).protectOverride).toBe(false);
   });
   test('the Twitch API exists since 0.8.0', () => {
     expect(featuresFor('0.7.2').helix).toBe(false);

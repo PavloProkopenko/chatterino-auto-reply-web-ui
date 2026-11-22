@@ -4,6 +4,9 @@ import { createWorkspace } from '../data/workspace.ts';
 import { lua } from '../lua.ts';
 import { TWITCH_CLIENT_ID } from '../../shared/twitch.ts';
 import { Session } from './session.svelte.ts';
+import { ModCheck } from './mod-check.svelte.ts';
+import { applyFetched } from './protect-model.ts';
+import { ProtectFetch } from './protect-fetch.svelte.ts';
 import { redeemAddBlock, type AddBlock } from './twitch-gate.ts';
 import { TwitchState } from './twitch.svelte.ts';
 import { channelValidator, userValidator } from './validators.ts';
@@ -19,6 +22,19 @@ export const twitch = new TwitchState({
   clientId: TWITCH_CLIENT_ID,
   enableHelix: () => {
     if (session.current && !session.current.helix_enabled) session.edit((c) => (c.helix_enabled = true));
+  },
+});
+
+/** "Am I a moderator on this channel?" for the redeem editor (asked on demand, see mod-check.svelte.ts). */
+export const modCheck = new ModCheck({ dir: () => session.pluginFolder?.dir ?? null, fetch: (input, init) => fetch(input, init), status: () => twitch.status });
+
+/** Mods and VIPs of a channel; every fetch (or paste) protects the new people in the config as an ordinary unsaved edit. */
+export const protectFetch = new ProtectFetch({
+  dir: () => session.pluginFolder?.dir ?? null,
+  fetch: (input, init) => fetch(input, init),
+  status: () => twitch.status,
+  onFetched: (logins) => {
+    if (session.current) session.edit((c) => void applyFetched(c, logins));
   },
 });
 
