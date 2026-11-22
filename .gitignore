@@ -48,6 +48,8 @@ fixtures/private/
 .env
 .env.*
 !.env.example
+# test-only flags (VITE_E2E, fast poll) read by `vite build --mode e2e`; no secrets, CI needs it
+!.env.e2e
 
 # Local app settings written when running from source
 .app-data/
