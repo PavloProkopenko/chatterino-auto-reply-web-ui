@@ -16,7 +16,7 @@
   import Settings from './pages/Settings.svelte';
   import TimerEditPage from './pages/TimerEditPage.svelte';
   import Timers from './pages/Timers.svelte';
-  import { session } from './state/app.svelte.ts';
+  import { session, twitch } from './state/app.svelte.ts';
   import { router } from './state/route.svelte.ts';
 
   // about every 10 s; the e2e build sets VITE_POLL_MS to something short so tests need not wait
@@ -54,8 +54,17 @@
   }
 
   const refresh = () => {
-    if (document.visibilityState === 'visible') void session.refreshIfChanged();
+    if (document.visibilityState === 'visible') {
+      void session.refreshIfChanged();
+      void twitch.refresh(); // a login made in chat shows up when the tab is back in view
+    }
   };
+
+  // the login belongs to the open folder: read it when a folder opens, forget it when another opens or none
+  $effect(() => {
+    void session.pluginFolder;
+    void twitch.refresh();
+  });
 </script>
 
 <svelte:window onkeydown={onKey} onbeforeunload={onBeforeUnload} onfocus={refresh} />

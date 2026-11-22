@@ -3,6 +3,7 @@ import { featuresFor, type Features } from '../../shared/features.ts';
 import { InMemoryBackups } from './backups.ts';
 import { BlockedPickError, directAccessSupported, fileConfigAccess, folderConfigAccess, folderPluginDir, permissionOf, pickConfigFile, pickFolder, readPluginInfo } from './fs-access.ts';
 import type { Persistence, RememberedSource } from './persistence.ts';
+import { pluginBundle } from './plugin-bundle.ts';
 import type { FileAccess, FileRead, PluginDir } from './ports.ts';
 import { createConfigStore, type ConfigStore } from './store.ts';
 
@@ -144,12 +145,12 @@ export function createWorkspace(deps: WorkspaceDeps): Workspace {
     const info = await readPluginInfo(handle);
     if (!info || info.name !== PLUGIN_NAME) return { notPlugin: handle.name };
     const store = createConfigStore({ file: folderConfigAccess(handle), backups: persistence.backups(id), ...storeOpts });
-    const source: Source = { kind: 'folder', name: handle.name, pluginVersion: info.version, features: featuresFor(info.version), canSaveInPlace: true, needsFreshFile: false, folderName: handle.name, store, reauthorize: async () => (await permissionOf(handle, true)) === 'granted', plugin: { name: handle.name, dir: folderPluginDir(handle) } };
+    const source: Source = { kind: 'folder', name: handle.name, pluginVersion: info.version, features: featuresFor(info.version, pluginBundle.version), canSaveInPlace: true, needsFreshFile: false, folderName: handle.name, store, reauthorize: async () => (await permissionOf(handle, true)) === 'granted', plugin: { name: handle.name, dir: folderPluginDir(handle) } };
     source.refreshInfo = async () => {
       const fresh = await readPluginInfo(handle);
       if (fresh && fresh.name === PLUGIN_NAME) {
         source.pluginVersion = fresh.version;
-        source.features = featuresFor(fresh.version);
+        source.features = featuresFor(fresh.version, pluginBundle.version);
       }
     };
     return source;
@@ -173,7 +174,7 @@ export function createWorkspace(deps: WorkspaceDeps): Workspace {
   const memorySource = (kind: 'upload' | 'demo', name: string, text: string | null, modified: number, info: { version: string | null; folder?: string | null }): Source => {
     const file = new DownloadingFile(text, modified, (t) => download('config.json', t));
     const store = createConfigStore({ file, backups: new InMemoryBackups(), ...storeOpts });
-    const source: Source = { kind, name, pluginVersion: info.version, features: featuresFor(info.version), canSaveInPlace: false, needsFreshFile: kind === 'upload', folderName: info.folder ?? null, store, reauthorize: async () => true };
+    const source: Source = { kind, name, pluginVersion: info.version, features: featuresFor(info.version, pluginBundle.version), canSaveInPlace: false, needsFreshFile: kind === 'upload', folderName: info.folder ?? null, store, reauthorize: async () => true };
     if (kind === 'upload') {
       source.applyInfo = async (f) => {
         let j: { name?: unknown; version?: unknown };
@@ -186,7 +187,7 @@ export function createWorkspace(deps: WorkspaceDeps): Workspace {
         if (j.name !== PLUGIN_NAME) return { status: 'not-plugin' };
         if (typeof j.version !== 'string') return { status: 'unreadable' };
         source.pluginVersion = j.version;
-        source.features = featuresFor(j.version);
+        source.features = featuresFor(j.version, pluginBundle.version);
         return { status: 'applied' };
       };
       source.replaceFile = async (f) => {

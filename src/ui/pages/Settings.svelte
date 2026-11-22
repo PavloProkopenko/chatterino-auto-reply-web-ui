@@ -3,6 +3,7 @@
   import ChipList from '../components/ChipList.svelte';
   import NumberField from '../components/NumberField.svelte';
   import PluginPanel from '../components/PluginPanel.svelte';
+  import TwitchCard from '../components/TwitchCard.svelte';
   import Switch from '../components/Switch.svelte';
   import { session, validateChannel, validateUser } from '../state/app.svelte.ts';
   import { checkSeconds } from '../state/validators.ts';
@@ -79,6 +80,7 @@
   </section>
 
   {#if session.pluginFolder}
+    <TwitchCard />
     <PluginPanel folder={session.pluginFolder} mode="settings" onchanged={() => session.refreshPluginInfo()} />
   {/if}
 </div>

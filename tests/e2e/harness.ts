@@ -36,6 +36,9 @@ export interface Sandbox {
   read(): Promise<string | null>;
   write(text: string): Promise<void>;
   names(): Promise<string[]>;
+  /** data/helix.json (the Twitch login): what the site writes on login/logout and the plugin owns otherwise. */
+  readHelix(): Promise<string | null>;
+  writeHelix(text: string): Promise<void>;
 }
 
 const PICKERS = () => {
@@ -95,6 +98,22 @@ export function sandboxFor(page: Page): Sandbox {
       page.evaluate(async (text) => {
         const data = await (await (await navigator.storage.getDirectory()).getDirectoryHandle('plugin')).getDirectoryHandle('data');
         const w = await (await data.getFileHandle('config.json', { create: true })).createWritable();
+        await w.write(text);
+        await w.close();
+      }, text),
+    readHelix: () =>
+      page.evaluate(async () => {
+        try {
+          const data = await (await (await navigator.storage.getDirectory()).getDirectoryHandle('plugin')).getDirectoryHandle('data');
+          return await (await (await data.getFileHandle('helix.json')).getFile()).text();
+        } catch {
+          return null;
+        }
+      }),
+    writeHelix: (text) =>
+      page.evaluate(async (text) => {
+        const data = await (await (await navigator.storage.getDirectory()).getDirectoryHandle('plugin')).getDirectoryHandle('data', { create: true });
+        const w = await (await data.getFileHandle('helix.json', { create: true })).createWritable();
         await w.write(text);
         await w.close();
       }, text),

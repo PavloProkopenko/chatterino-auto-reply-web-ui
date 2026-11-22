@@ -4,7 +4,7 @@
   import Dialog from '../components/Dialog.svelte';
   import Icon from '../components/Icon.svelte';
   import { lua } from '../lua.ts';
-  import { session } from '../state/app.svelte.ts';
+  import { currentRedeemBlock, session } from '../state/app.svelte.ts';
   import { router } from '../state/route.svelte.ts';
   import { refocusAfterMove } from '../state/focus.ts';
   import { channelMissing, describeRedeem, redeemGatingProblems } from '../state/item-text.ts';
@@ -16,6 +16,7 @@
   const T = ru.redeems;
   const cfg = $derived(session.current!);
   const features = $derived(session.source!.features);
+  const addBlock = $derived(currentRedeemBlock());
 
   let removing = $state<number | null>(null);
   let analysis = $state.raw(new Map<number, RedeemAnalysis>());
@@ -83,10 +84,19 @@
       <h1>{ru.nav.redeems}</h1>
       <p class="muted">{T.intro}</p>
     </div>
-    <button class="btn primary" type="button" onclick={() => router.go({ page: 'redeems', view: 'edit', id: null })}><Icon name="plus" size={16} />{T.add}</button>
+    <button class="btn primary" type="button" disabled={addBlock !== null} aria-describedby={addBlock ? 'redeem-add-why' : undefined} onclick={() => router.go({ page: 'redeems', view: 'edit', id: null })}><Icon name="plus" size={16} />{T.add}</button>
   </div>
 
   <div class="page-notes">
+    {#if addBlock}
+      <div class="banner info" role="note" id="redeem-add-why">
+        <Icon name="alert" />
+        <div class="body">
+          <p>{addBlock === 'login' ? T.needLogin : T.needEnable}</p>
+          <button class="btn small" type="button" onclick={() => router.go({ page: 'settings', view: 'list' })}>{T.openSettings}</button>
+        </div>
+      </div>
+    {/if}
     <div class="banner info" role="note"><Icon name="alert" /><div class="body"><p>{T.modNote}</p><p class="help">{T.settingsHint}</p></div></div>
     {#if unprotected}
       <div class="banner warn" role="status"><Icon name="alert" /><div class="body"><p>{T.protectWarn}</p></div></div>
