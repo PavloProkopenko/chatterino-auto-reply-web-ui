@@ -10,7 +10,7 @@ test('first run: pick the plugin folder, see the values; only the folder name is
   await pickPluginFolder(page);
   await expect(field(page, 'Пауза для одного зрителя')).toHaveValue('60');
   await expect(field(page, 'Минимум между любыми ответами')).toHaveValue('2');
-  await expect(page.getByText('streamer', { exact: true })).toBeVisible(); // the channel chip
+  await expect(page.getByRole('list', { name: 'Каналы: добавленные' }).getByText('streamer', { exact: true })).toBeVisible(); // the channel chip
   await expect(page.getByText('Папка плагина')).toBeVisible();
   await expect(page.locator('.file-box .path')).toHaveText('plugin');
   await expect(page.getByText('Плагин 0.5.0')).toBeVisible();
@@ -56,7 +56,7 @@ test("lists: logins are checked by the plugin's own rules and stored normalised"
   await expect(rejected).toBeInViewport({ ratio: 1 }); // not hidden behind the save bar
   await channels.fill('#Other_Chan');
   await channels.press('Enter');
-  await expect(page.getByText('other_chan', { exact: true })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Каналы: добавленные' }).getByText('other_chan', { exact: true })).toBeVisible();
   const ignore = field(page, 'Игнорируемые пользователи');
   await ignore.fill('@Nightbot, moobot');
   await ignore.press('Enter');

@@ -3,7 +3,7 @@
   import { ru } from '../../i18n/ru.ts';
   import type { Redeem } from '../../shared/config.ts';
   import { lua } from '../lua.ts';
-  import { session } from '../state/app.svelte.ts';
+  import { modCheck, session, twitch } from '../state/app.svelte.ts';
   import { describeDuration, durationText, LONG_MUTE_SECONDS, QUICK_DURATIONS } from '../state/duration.ts';
   import { suggestName } from '../state/rule-checks.ts';
   import { ruleLabel } from '../state/rule-text.ts';
@@ -13,6 +13,7 @@
   import Dialog from './Dialog.svelte';
   import Icon from './Icon.svelte';
   import NameField from './NameField.svelte';
+  import ProtectedUsers from './ProtectedUsers.svelte';
 
   let { redeemId, onclose }: { redeemId: number | null; onclose: () => void } = $props();
   const R = ru.rules.editor;
@@ -114,6 +115,7 @@
   }
 
   async function done() {
+    if (gate !== null) return; // the button is disabled too; this covers Enter in a field
     touched = true;
     formError = false;
     const ok = await runChecks();
@@ -128,6 +130,40 @@
     save();
   }
 
+  // "Am I a moderator here?" exists where there is a Twitch login (a plugin folder with plugin 0.8.0+).
+  // A NEW reward needs a passed check on its channel; editing an existing one is never blocked.
+  const twitchCapable = $derived(session.source?.kind === 'folder' && features.helix);
+  const checkRequired = $derived(redeemId === null && twitchCapable);
+  const norm = (c: string) => c.trim().replace(/^#/, '').toLowerCase();
+  const checkResult = $derived(modCheck.result && modCheck.result.channel === norm(channel) ? modCheck.result : null);
+  const gate = $derived<'unchecked' | 'notMod' | null>(!checkRequired || modCheck.passes(channel) ? null : checkResult?.kind === 'notModerator' ? 'notMod' : 'unchecked');
+
+  // the check belongs to one channel: choosing another one starts over (coming back asks again)
+  $effect(() => {
+    const c = norm(channel);
+    untrack(() => {
+      if (modCheck.result && modCheck.result.channel !== c) modCheck.reset();
+    });
+  });
+
+  function checkText(): string {
+    const r = checkResult;
+    if (!r) return '';
+    const C = T.check;
+    switch (r.kind) {
+      case 'owner': return C.owner(r.channel);
+      case 'moderator': return C.moderator(r.channel);
+      case 'notModerator': return C.notModerator(r.channel);
+      case 'needsRelogin': return C.needsRelogin;
+      case 'error':
+        if (r.reason === 'expired') return ru.settings.protect.errors.expired;
+        if (r.reason === 'network') return ru.settings.protect.errors.network;
+        if (r.reason === 'notLoggedIn') return ru.settings.protect.reasons.notLoggedIn;
+        return C.error(r.message ?? '');
+    }
+  }
+  const checkIsGood = $derived(checkResult?.kind === 'owner' || checkResult?.kind === 'moderator');
+
   const needVersion = (v: string) => (features.versionKnown ? ru.notice.needsPlugin(v) : R.unknownVersion);
 </script>
 
@@ -139,6 +175,25 @@
     </div>
 
     <ChannelSelect {uid} bind:channel channels={cfg.channels} label={T.channel} help={T.channelHelp} none={T.channelNone} missing={T.channelMissing} error={channelError} />
+
+    {#if twitchCapable}
+      <div class="field" data-testid="mod-check">
+        <span class="label">{T.check.title}</span>
+        <span class="help" id="{uid}-chkh">{T.check.help}</span>
+        <div class="file-actions">
+          <button class="btn" type="button" disabled={!channel || modCheck.checking || !twitch.loggedIn} aria-describedby="{uid}-chkh" onclick={() => void modCheck.run(channel)}>{modCheck.checking ? T.check.checking : T.check.button}</button>
+        </div>
+        {#if checkResult}
+          <p class={checkIsGood ? 'help' : 'error-text'} role={checkIsGood ? 'status' : 'alert'} data-testid="mod-check-result">{#if !checkIsGood}<Icon name="alert" size={14} />{/if}{checkText()}</p>
+        {/if}
+      </div>
+    {/if}
+
+    <fieldset data-testid="redeem-protect">
+      <legend>{T.protectTitle}</legend>
+      <p class="help">{T.protectNote}</p>
+      <ProtectedUsers {channel} showExceptions={false} />
+    </fieldset>
 
     <div class="field">
       <label for="{uid}-title">{T.title}</label>
@@ -174,9 +229,10 @@
       <button type="button" role="switch" class="switch" aria-checked={enabled} aria-labelledby="{uid}-en" onclick={() => (enabled = !enabled)}></button>
     </div>
 
+    {#if gate}<p id="{uid}-gate" class={gate === 'notMod' ? 'error-text' : 'help'}>{gate === 'notMod' ? T.check.blocked : T.check.required}</p>{/if}
     {#if formError}<p class="error-text" role="alert"><Icon name="alert" size={14} />{R.fixFirst}</p>{/if}
     <div class="editor-foot">
-      <button class="btn primary" type="submit">{R.done}</button>
+      <button class="btn primary" type="submit" disabled={gate !== null} aria-describedby={gate ? `${uid}-gate` : undefined}>{R.done}</button>
       <button class="btn" type="button" onclick={onclose}>{R.cancel}</button>
     </div>
   </form>

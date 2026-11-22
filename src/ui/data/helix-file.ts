@@ -1,3 +1,14 @@
+/** What the UI may know: who is logged in and which rights the login has. Deliberately has no token field. */
+export interface HelixStatus {
+  loggedIn: boolean;
+  login: string | null;
+  clientId: string | null;
+  /** Twitch's numeric id of the account; null when the file does not have it. */
+  userId: string | null;
+  /** Granted scopes as Twitch reported them at login; [] when unknown. */
+  scopes: string[];
+}
+
 import type { PluginDir } from './ports.ts';
 import { revokeToken, type FlowDeps, type StoredLogin } from './twitch-flow.ts';
 
@@ -33,12 +44,36 @@ function parse(raw: string | null): Store | null {
 
 const str = (v: unknown) => (typeof v === 'string' && v !== '' ? v : null);
 
+const strList = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
+
 /** The token only exists inside this module's functions, and only for as long as one call needs it. */
 export async function readHelixStatus(dir: PluginDir): Promise<HelixStatus> {
   const s = parse(await dir.read(HELIX_FILE));
-  if (!s) return { loggedIn: false, login: null, clientId: null };
+  if (!s) return { loggedIn: false, login: null, clientId: null, userId: null, scopes: [] };
   const loggedIn = str(s.access_token) !== null;
-  return { loggedIn, login: loggedIn ? str(s.login) : null, clientId: str(s.client_id) };
+  return { loggedIn, login: loggedIn ? str(s.login) : null, clientId: str(s.client_id), userId: loggedIn ? str(s.user_id) : null, scopes: loggedIn ? strList(s.scopes) : [] };
+}
+
+/** What a Twitch API call needs. Only ever passed to the callback of `withHelixToken`. */
+export interface HelixAuth {
+  token: string;
+  clientId: string;
+  userId: string;
+  login: string | null;
+}
+
+/**
+ * Reads the login for ONE call: `fn` gets the token and its result is returned, the token itself never is.
+ * The site does not refresh tokens (the plugin does), so a token the plugin could not refresh in time is
+ * simply rejected by Twitch (401) and reported by the caller. Nothing is written.
+ */
+export async function withHelixToken<T>(dir: PluginDir, fn: (auth: HelixAuth) => Promise<T>): Promise<{ status: 'ok'; value: T } | { status: 'notLoggedIn' }> {
+  const s = parse(await dir.read(HELIX_FILE));
+  const token = s ? str(s.access_token) : null;
+  const clientId = s ? str(s.client_id) : null;
+  const userId = s ? str(s.user_id) : null;
+  if (!s || !token || !clientId || !userId) return { status: 'notLoggedIn' };
+  return { status: 'ok', value: await fn({ token, clientId, userId, login: str(s.login) }) };
 }
 
 /** Replaces the login, keeping unknown keys. A corrupt file is replaced. Throws when the write fails. */

@@ -56,6 +56,8 @@ export interface Config {
   channels: string[];
   ignore_users: string[];
   protect_users: string[];
+  /** Mute exceptions (plugin 0.9.0): may be muted although a badge, `protect_users` or a bot says otherwise. */
+  unprotect_users: string[];
   per_user_cooldown: number;
   per_rule_cooldown: number;
   global_min_gap: number;
@@ -79,6 +81,7 @@ export const DEFAULTS = {
   channels: [],
   ignore_users: [],
   protect_users: [],
+  unprotect_users: [],
   per_user_cooldown: 60,
   per_rule_cooldown: 10,
   global_min_gap: 1,
@@ -165,7 +168,7 @@ export function normaliseRedeem(raw: unknown): Redeem {
 
 export function normalise(base: JsonObject): Config {
   const cfg: JsonObject = { ...structuredClone(DEFAULTS), ...structuredClone(base) };
-  for (const key of ['channels', 'ignore_users', 'protect_users'] as const) cfg[key] = asList(cfg[key]);
+  for (const key of ['channels', 'ignore_users', 'protect_users', 'unprotect_users'] as const) cfg[key] = asList(cfg[key]);
   cfg.rules = asList(cfg.rules).map(normaliseRule);
   cfg.timers = asList(cfg.timers).map(normaliseTimer);
   cfg.redeems = asList(cfg.redeems).map(normaliseRedeem);

@@ -3,7 +3,7 @@
  * The app passes the bundled plugin version instead (`featuresFor(v, pluginBundle.version)`), so this
  * cannot go stale again: the UI understands exactly the plugin it ships with.
  */
-export const KNOWN_PLUGIN_VERSION = '0.8.1';
+export const KNOWN_PLUGIN_VERSION = '0.9.0';
 
 export interface Features {
   versionKnown: boolean;
@@ -19,6 +19,8 @@ export interface Features {
   autoReload: boolean;
   /** Opt-in Twitch API (`helix_enabled`, data/helix.json), since 0.8.0. */
   helix: boolean;
+  /** `unprotect_users`: explicit mute exceptions that beat badges and the protected list, since 0.9.0. */
+  protectOverride: boolean;
   /** The plugin re-reads data/helix.json while running (a login made on the site needs no restart), since 0.8.2. */
   helixSync: boolean;
   /** The plugin is newer than this UI: unknown fields are preserved but may not be editable. */
@@ -37,11 +39,11 @@ export function compareVersions(a: string, b: string): number {
   return 0;
 }
 
-const SINCE = { names: '0.2.1', ruleChannels: '0.3.0', timerConditions: '0.4.0', skipUsers: '0.5.0', autoReload: '0.7.0', helix: '0.8.0', helixSync: '0.8.2' } as const;
+const SINCE = { names: '0.2.1', ruleChannels: '0.3.0', timerConditions: '0.4.0', skipUsers: '0.5.0', autoReload: '0.7.0', helix: '0.8.0', helixSync: '0.8.2', protectOverride: '0.9.0' } as const;
 
 export function featuresFor(version: string | null, known: string = KNOWN_PLUGIN_VERSION): Features {
   if (version === null || parse(version) === null) {
-    return { versionKnown: false, names: false, ruleChannels: false, timerConditions: false, skipUsers: false, autoReload: false, helix: false, helixSync: false, newerThanKnown: false };
+    return { versionKnown: false, names: false, ruleChannels: false, timerConditions: false, skipUsers: false, autoReload: false, helix: false, helixSync: false, protectOverride: false, newerThanKnown: false };
   }
   const has = (since: string) => compareVersions(version, since) >= 0;
   return {
@@ -53,6 +55,7 @@ export function featuresFor(version: string | null, known: string = KNOWN_PLUGIN
     autoReload: has(SINCE.autoReload),
     helix: has(SINCE.helix),
     helixSync: has(SINCE.helixSync),
+    protectOverride: has(SINCE.protectOverride),
     newerThanKnown: compareVersions(version, known) > 0,
   };
 }

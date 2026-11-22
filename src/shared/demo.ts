@@ -9,6 +9,7 @@ export function demoConfigText(): string {
     channels: ['streamer'],
     ignore_users: ['nightbot'],
     protect_users: [],
+    unprotect_users: [],
     per_user_cooldown: 60,
     per_rule_cooldown: 10,
     global_min_gap: 2,

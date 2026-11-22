@@ -54,7 +54,7 @@ describe('TwitchState', () => {
     const s = setup({ files: { 'data/helix.json': JSON.stringify({ client_id: 'cid1234567', access_token: 'AT-SECRET', login: 'streamer' }) } });
     expect(s.state.status).toBeNull();
     await s.state.refresh();
-    expect(s.state.status).toEqual({ loggedIn: true, login: 'streamer', clientId: 'cid1234567' });
+    expect(s.state.status).toEqual({ loggedIn: true, login: 'streamer', clientId: 'cid1234567', userId: null, scopes: [] });
     expect(s.state.loggedIn).toBe(true);
   });
 
@@ -70,7 +70,7 @@ describe('TwitchState', () => {
     expect(s.state.phase).toBe('idle');
     expect(s.state.code).toBeNull();
     expect(s.state.error).toBeNull();
-    expect(s.state.status).toEqual({ loggedIn: true, login: 'streamer', clientId: 'cid1234567' });
+    expect(s.state.status).toEqual({ loggedIn: true, login: 'streamer', clientId: 'cid1234567', userId: '1000', scopes: ['moderation:read'] });
     expect(s.enabled()).toBe(1);
     expect(JSON.parse((await s.dir.read('data/helix.json'))!)).toMatchObject({ access_token: 'AT-SECRET', refresh_token: 'RT-SECRET', login: 'streamer', client_id: 'cid1234567' });
   });
@@ -170,7 +170,7 @@ describe('TwitchState', () => {
     const s = setup({ files: { 'data/helix.json': JSON.stringify({ client_id: 'cid1234567', access_token: 'AT-SECRET', login: 'streamer' }) } });
     await s.state.refresh();
     await s.state.logout();
-    expect(s.state.status).toEqual({ loggedIn: false, login: null, clientId: 'cid1234567' });
+    expect(s.state.status).toEqual({ loggedIn: false, login: null, clientId: 'cid1234567', userId: null, scopes: [] });
     expect(JSON.parse((await s.dir.read('data/helix.json'))!)).toEqual({ client_id: 'cid1234567' });
     expect(s.calls.some((c) => c.includes('/oauth2/revoke') && c.includes('token=AT-SECRET'))).toBe(true);
   });

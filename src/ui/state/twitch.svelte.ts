@@ -117,7 +117,7 @@ export class TwitchState {
         this.error = { kind: 'saveFailed' };
         return;
       }
-      this.status = { loggedIn: true, login: result.login.login, clientId };
+      this.status = { loggedIn: true, login: result.login.login, clientId, userId: result.login.user_id || null, scopes: result.login.scopes };
       this.#deps.enableHelix();
     } finally {
       // a login started after a cancel owns the state now: leave it alone
@@ -146,7 +146,7 @@ export class TwitchState {
     this.phase = 'loggingOut';
     try {
       await logoutHelix(dir, this.#flowDeps());
-      this.status = { loggedIn: false, login: null, clientId: this.status?.clientId ?? null };
+      this.status = { loggedIn: false, login: null, clientId: this.status?.clientId ?? null, userId: null, scopes: [] };
     } catch {
       this.error = { kind: 'saveFailed' };
     } finally {

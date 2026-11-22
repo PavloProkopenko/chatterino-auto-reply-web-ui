@@ -3,6 +3,7 @@
   import ChipList from '../components/ChipList.svelte';
   import NumberField from '../components/NumberField.svelte';
   import PluginPanel from '../components/PluginPanel.svelte';
+  import ProtectedUsers from '../components/ProtectedUsers.svelte';
   import TwitchCard from '../components/TwitchCard.svelte';
   import Switch from '../components/Switch.svelte';
   import { session, validateChannel, validateUser } from '../state/app.svelte.ts';
@@ -16,6 +17,10 @@
 
   const cfg = $derived(session.current!);
   const features = $derived(session.source?.features);
+  const P = ru.settings.protect;
+  // the channel whose mods and VIPs are shown in the protection card (kept valid when the channel list changes)
+  let picked = $state('');
+  const protectChannel = $derived(cfg.channels.includes(picked) ? picked : (cfg.channels[0] ?? ''));
 
   function setSeconds(key: SecondsKey, min: number, text: string) {
     const r = checkSeconds(text, min, MAX_SECONDS);
@@ -77,6 +82,22 @@
     <Switch label={ru.settings.redeems.muteLurkers} help={ru.settings.redeems.muteLurkersHelp} checked={cfg.mute_lurkers} onchange={(v) => setSwitch('mute_lurkers', v)} />
     <Switch label={ru.settings.redeems.backfire} help={ru.settings.redeems.backfireHelp} checked={cfg.backfire} onchange={(v) => setSwitch('backfire', v)} />
     <ChipList label={ru.settings.lists.protect} help={ru.settings.lists.protectHelp} placeholder={ru.settings.lists.usersPlaceholder} items={cfg.protect_users} validate={validateUser} onchange={(v) => setList('protect_users', v)} />
+  </section>
+
+  <section class="card" aria-labelledby="st-protect">
+    <h2 id="st-protect">{P.title}</h2>
+    <p class="help">{P.intro}</p>
+    {#if cfg.channels.length === 0}
+      <p class="help">{P.noChannels}</p>
+    {:else}
+      <div class="field">
+        <label for="st-protect-ch">{P.channelLabel}</label>
+        <select id="st-protect-ch" class="input" value={protectChannel} onchange={(e) => (picked = e.currentTarget.value)}>
+          {#each cfg.channels as c (c)}<option value={c}>{c}</option>{/each}
+        </select>
+      </div>
+      <ProtectedUsers channel={protectChannel} />
+    {/if}
   </section>
 
   {#if session.pluginFolder}
