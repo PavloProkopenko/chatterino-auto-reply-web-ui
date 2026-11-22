@@ -32,6 +32,9 @@ Global: `version` (1), `active_until` (nil | `"forever"` | unix seconds; **live 
 
 Condition `type`: `keyword` (substring), `word` (whole word/phrase), `anyword` (`a|b|c`, each a whole word), `mention` (no `match`), `flag` (`match` in `first highlighted reply announcement sub cheer`), `pattern` (Lua pattern). Conditions of one item are ANDed (the plugin's chat syntax joins them with ` + `); there is no OR inside an item (use two rules).
 
+### 3a. `data/helix.json` (plugin 0.8.0+): the Twitch login
+Not part of `config.json`. Keys: `client_id`, `access_token`, `refresh_token`, `expires_at` (unix s), `user_id`, `login`, `scopes[]`. **Owner: the plugin** (it refreshes tokens, which Twitch rotates, and rewrites the file). The site writes it only on login (all keys, unknown keys kept) and on logout (token and account keys removed, `client_id` kept; the token is revoked at Twitch). The UI may show only who is logged in; the token is never held in UI state, logged, shown, backed up or put in an error message. Plugin >= 0.8.2 re-reads the file while running; older plugins only at start. `helix_enabled` (bool, default false) in `config.json` is the opt-in switch.
+
 ## 4. Validation rules the UI must honour (do not re-implement: run the plugin's Lua, see PLAN.md)
 - Reply (rules and timers): non-empty, <= 500 **bytes** (`#reply` in Lua: a Cyrillic letter is 2 bytes, so about 250 letters), must not start with `/` or `.`; timers also need `{time}`. Placeholders: `{user}` (sender), `{time}` (timers). The check lives in `engine.lua` (`E.check_reply`), which is not pure; see "Recommended plugin change" below.
 - `rules.validate(type, match)`, `names.valid/check/find` (1-20 chars, letters incl. Cyrillic/digits/`_`/`-`, at least one letter, unique per kind, case-insensitive, not a reserved command word — list in `names.lua`), `util.parse_duration` (`30m`, `1h30m`), `util.parse_channels`, `util.parse_skip`.
@@ -48,6 +51,8 @@ Condition `type`: `keyword` (substring), `word` (whole word/phrase), `anyword` (
 | rule channel scope (`channels`) | 0.3.0 |
 | timer conditions (`conditions[]`, `=>` syntax) | 0.4.0 |
 | `skip_mods` / `skip_users` | 0.5.0 |
+| Twitch API (`helix_enabled`, `data/helix.json`) | 0.8.0 |
+| plugin re-reads `data/helix.json` while running | 0.8.2 |
 Older plugin + newer feature = the UI disables the control and explains why. Newer plugin than the UI knows = open read/write with a "some settings may be preserved but not editable" notice.
 
 ## 6. Recommended plugin change (not part of the web project; needs the owner's go-ahead)

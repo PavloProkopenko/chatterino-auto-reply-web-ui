@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import type { Page } from '@playwright/test';
 import { expect, openSection, openSite, pickPluginFolder, sampleConfig, test, watchPage } from './harness.ts';
 
@@ -79,6 +80,31 @@ test('settings: update an older plugin (backup, config untouched), then roll bac
   await expect(page.getByTestId('plugin-state')).toContainText('Установлена версия 0.5.0, на сайте');
   expect(JSON.parse(await text(page, 'info.json')).version).toBe('0.5.0');
   expect(problems).toEqual([]);
+});
+
+const bundledVersion = () => (JSON.parse(readFileSync(new URL('../../vendor/plugin/VERSION.json', import.meta.url), 'utf8')) as { version: string }).version;
+
+test('sidebar: the Update button shows for an older plugin, updates with a backup, then goes away', async ({ page }) => {
+  const problems = watchPage(page);
+  const sandbox = await openSite(page, { version: '0.5.0' });
+  await pickPluginFolder(page);
+  const sidebar = page.locator('.file-box');
+  await expect(sidebar.getByText('Плагин 0.5.0')).toBeVisible();
+  await sidebar.getByRole('button', { name: 'Обновить плагин' }).click();
+  await expect(sidebar.getByRole('status')).toContainText(`Обновлено до ${bundledVersion()}`);
+  await expect(sidebar.getByText(`Плагин ${bundledVersion()}`)).toBeVisible();
+  await expect(sidebar.getByRole('button', { name: 'Обновить плагин' })).toHaveCount(0);
+  expect(JSON.parse(await text(page, '.backup/0.5.0/info.json')).version).toBe('0.5.0');
+  expect(JSON.parse(await text(page, 'info.json')).version).toBe(bundledVersion());
+  expect(await sandbox.read()).toBe(sampleConfig()); // config untouched
+  expect(problems).toEqual([]);
+});
+
+test('sidebar: no Update button when the plugin is current', async ({ page }) => {
+  await openSite(page, { version: bundledVersion() });
+  await pickPluginFolder(page);
+  await expect(page.locator('.file-box').getByText(`Плагин ${bundledVersion()}`)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Обновить плагин' })).toHaveCount(0);
 });
 
 test('link helper builds a quoted command and refuses unsafe paths', async ({ page }) => {

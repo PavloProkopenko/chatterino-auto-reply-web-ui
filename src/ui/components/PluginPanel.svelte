@@ -1,9 +1,11 @@
 <script lang="ts">
   import { ru } from '../../i18n/ru.ts';
   import { pluginBundle } from '../data/plugin-bundle.ts';
-  import { inspectPlugin, installPlugin, listPluginBackups, rollbackPlugin, updatePlugin, type PluginInspection } from '../data/plugin-install.ts';
+  import { inspectPlugin, installPlugin, listPluginBackups, rollbackPlugin, type PluginInspection } from '../data/plugin-install.ts';
+  import { runPluginUpdate } from '../data/plugin-update.ts';
   import type { PluginFolder } from '../data/workspace.ts';
   import { detectPlatform, linkCommand, pluginsDir } from '../state/place.ts';
+  import { session } from '../state/app.svelte.ts';
   import Icon from './Icon.svelte';
 
   // `settings`: the folder is the open plugin folder. `install`: a folder just chosen on the welcome screen.
@@ -27,6 +29,11 @@
     message = null;
     void refresh();
   });
+  // the sidebar Update button changes the installed version: re-inspect, but keep the message on screen
+  $effect(() => {
+    void session.source?.pluginVersion;
+    void refresh();
+  });
 
   async function run(action: () => Promise<{ kind: 'ok' | 'error'; text: string }>) {
     busy = true;
@@ -47,12 +54,7 @@
       if (r.status === 'installed') return { kind: 'ok', text: ru.plugin.done.installed };
       return { kind: 'error', text: r.status === 'failed' ? ru.plugin.problem.failed(r.message) : ru.plugin.problem.refused };
     });
-  const doUpdate = () =>
-    run(async () => {
-      const r = await updatePlugin(folder.dir, bundle);
-      if (r.status === 'updated') return { kind: 'ok', text: ru.plugin.done.updated(r.from, r.backup) };
-      return { kind: 'error', text: r.status === 'failed' ? ru.plugin.problem.failed(r.message) : ru.plugin.problem.refused };
-    });
+  const doUpdate = () => run(() => runPluginUpdate(folder.dir, bundle));
   const doRollback = () =>
     run(async () => {
       const r = await rollbackPlugin(folder.dir);

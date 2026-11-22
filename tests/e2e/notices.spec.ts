@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 import { expect, openNotices, openSite, pickPluginFolder, test, watchPage } from './harness.ts';
@@ -57,6 +58,15 @@ test('an error opens the popup once, turns the icon red and is not repeated afte
   await page.waitForTimeout(400);
   await expect(popup(page)).toHaveCount(0);
   await expect(bell(page)).toHaveAccessibleName('Уведомления: 1');
+});
+
+test('the plugin version the site ships with is not "newer than this app" (the warning was always on)', async ({ page }) => {
+  const bundled = (JSON.parse(readFileSync(new URL('../../vendor/plugin/VERSION.json', import.meta.url), 'utf8')) as { version: string }).version;
+  await openSite(page, { version: bundled });
+  await pickPluginFolder(page);
+  await expect(bell(page)).toHaveAccessibleName('Уведомления: нет');
+  await bell(page).click();
+  await expect(popup(page)).not.toContainText('Плагин новее');
 });
 
 test('phone width: the popup fits the screen', async ({ page }) => {
