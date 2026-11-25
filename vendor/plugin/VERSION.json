@@ -1,18 +1,18 @@
 {
   "plugin": "Auto Reply",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "files": {
-    "commands.lua": "3b2c2ee7d4bbe64ed69fdbcb4d0721001643195c8b7945b9e16e2f5cd7db52cc",
+    "commands.lua": "100a8c9d657ca7e114689ebb6bf8135bcb67fba06f1f3842bd750d0e6d9cf1a1",
     "complete.lua": "e2647c54438a46cf2a0d9d3c2e562cbb749e55ba1e6a76c4a8b112ba038dae39",
     "config.lua": "935f1c9edba9891f5179500fa9dba287dbd0a10167e1888876e5d428202bbd32",
-    "engine.lua": "86f002c1a13404fd14b94178ad15f09ad4cfacd0e452b48541c020acc74639ee",
+    "engine.lua": "8a6e76fb34e08e4e7cbf499f2a3ae1bcf875892514d0a3f8cb12bd2911a1bb65",
     "helix.lua": "fa30bc5ba25fcb53739206c713bf28d5153bd993301a7b1449a5c3892d4fcb69",
-    "info.json": "372614bef60c30d57f0aaa4c1a05638a1360f04161ae3c2948df85edc1d01570",
+    "info.json": "e29632b9bfbedb226d4bb50b288ca646247deac81e1049b50aeca44dfaf7ced6",
     "init.lua": "18478c0c3aad499d4cff06dfe538ad68f3c4c48279dbd009d0f2d6a46c3fb7dd",
     "names.lua": "074b77eae259bf33b7bb3486cc5da381402931a8f03879766748b24846f38fc5",
-    "rules.lua": "4fae0aae0c5c76b70682c994d34ab2d458ebd15cf1b6974a723e093d3bcc01a4",
-    "util.lua": "887b86b45580b8a2421fe30aad287ac76be243bd32c97eba84fd27944bef6404",
+    "rules.lua": "5020cbca3dbdf6b26fc9030a802bc3ae8fa7aa2b6372ebf5265c33c6fd944e41",
+    "util.lua": "6b116343fec46732ab0e1debaadc92aea41477d4ccc3b1658e26aad91ff7cbbc",
     "ux.lua": "33e42b923c99b9fba2a5b39af41147a393428167bdf2ed17ed191742979925d5",
-    "wizard.lua": "81e3fd7be909cda3a049e312154478f8e1fec947a9e3aaedf974a1e9086469fd"
+    "wizard.lua": "4de2f7922623a6907c10f5e115a31d6e44ffbaeadab30fa62dd6c5d82139cbe3"
   }
 }

@@ -31,6 +31,11 @@ local function condition_error(rule)
             return err
         end
     end
+    -- negative conditions (noword) need at least one ordinary condition next to them
+    local sok, serr = rules.validate_set(rules.conditions(rule))
+    if not sok then
+        return serr
+    end
     return nil
 end
 

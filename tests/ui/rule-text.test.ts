@@ -10,6 +10,7 @@ describe('describing conditions in plain Russian', () => {
     expect(describeCondition({ type: 'word', match: 'привет' })).toBe('слово «привет»');
     expect(describeCondition({ type: 'keyword', match: '!дс' })).toBe('содержит «!дс»');
     expect(describeCondition({ type: 'anyword', match: '!донат|!donate' })).toBe('любое из: !донат, !donate');
+    expect(describeCondition({ type: 'noword', match: 'лет|ей|ему' })).toBe('без слов: лет, ей, ему');
     expect(describeCondition({ type: 'mention' })).toBe('упоминает вас');
     expect(describeCondition({ type: 'flag', match: 'first' })).toBe('первое сообщение зрителя');
     expect(describeCondition({ type: 'pattern', match: '^!%a+$' })).toBe('шаблон «^!%a+$»');

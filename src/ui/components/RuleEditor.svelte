@@ -72,12 +72,15 @@
   });
   const me = $derived(cfg.channels[0] ?? '');
 
+  // noword in a plugin older than 0.10.0 would be rejected on load
+  const nowordBlocked = $derived(!features.noword && conditions.some((c) => c.type === 'noword'));
+
   async function runChecks(): Promise<boolean> {
     const list = listWithDraft;
     const [all, errs] = await Promise.all([analyseRules(lua, list, me), Promise.all(conditions.map((c) => checkCondition(lua, c.type, c.match)))]);
     analysis = all.get(focusId) ?? null;
     condErrors = errs;
-    return !analysis?.replyError && !analysis?.nameError && errs.every((e) => e === null);
+    return !analysis?.replyError && !analysis?.nameError && !analysis?.conditionError && !nowordBlocked && errs.every((e) => e === null);
   }
 
   $effect(() => {
@@ -113,6 +116,7 @@
 
   const gated = (ok: boolean) => !ok;
   const needVersion = (v: string) => (features.versionKnown ? ru.notice.needsPlugin(v) : T.unknownVersion);
+  const setError = $derived(condErrors.every((e) => e === null) ? (nowordBlocked ? needVersion('0.10.0') : seen(analysis?.conditionError)) : undefined);
 </script>
 
 <div class="editor-page" role="region" aria-labelledby="{uid}-h">
@@ -124,7 +128,7 @@
 
     <NameField {uid} bind:name error={seen(analysis?.nameError)} disabled={gated(features.names)} canSuggest={!!reply.trim()} onsuggest={() => void suggest()} note={gated(features.names) ? needVersion('0.2.1') : undefined} />
 
-    <ConditionsEditor {uid} bind:conditions errors={condErrors.map((e) => seen(e) ?? null)} />
+    <ConditionsEditor {uid} bind:conditions errors={condErrors.map((e) => seen(e) ?? null)} nowordOk={features.noword} nowordNote={needVersion('0.10.0')} {setError} />
 
     <ReplyField {uid} bind:reply error={seen(analysis?.replyError)} />
 
