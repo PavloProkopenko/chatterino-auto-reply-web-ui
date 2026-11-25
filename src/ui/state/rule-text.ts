@@ -16,6 +16,10 @@ export function describeCondition(c: Condition): string {
       const parts = m.split('|').map((x) => x.trim()).filter(Boolean);
       return parts.length ? T.describe.anyword(parts.join(', ')) : T.describe.empty;
     }
+    case 'noword': {
+      const parts = m.split('|').map((x) => x.trim()).filter(Boolean);
+      return parts.length ? T.describe.noword(parts.join(', ')) : T.describe.empty;
+    }
     case 'mention':
       return T.describe.mention;
     case 'flag':

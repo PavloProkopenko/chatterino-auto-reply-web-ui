@@ -102,7 +102,28 @@ describe('checkCondition', () => {
     expect(await checkCondition(host, 'mention')).toBeNull();
     expect(await checkCondition(host, 'word', '')).toContain('нужен');
     expect(await checkCondition(host, 'anyword', '|')).toBeTruthy();
+    expect(await checkCondition(host, 'noword', 'лет|ей')).toBeNull();
+    expect(await checkCondition(host, 'noword', '|')).toBeTruthy();
   });
+});
+
+describe('noword (plugin 0.10.0)', () => {
+  const ask = { type: 'anyword', match: 'сколько|скок' };
+  const no = { type: 'noword', match: 'лет|ей|ему' };
+
+  test('a rule that only has noword conditions is a condition error, with an ordinary condition it is fine', async () => {
+    const res = await analyseRules(host, [r(1, 'a', [no]), r(2, 'b', [ask, no])], 'streamer');
+    expect(res.get(1)?.conditionError).toBeTruthy();
+    expect(res.get(2)?.conditionError).toBeUndefined();
+  });
+
+  test('the preview runs the plugin\'s negation: age questions are excluded', async () => {
+    const list = [r(1, 'Играет {user}', [ask, no])];
+    const base = { text: '', channel: 'main', flags: [] as string[], me: 'streamer' };
+    expect((await previewRules(host, list, { ...base, text: 'сколько смотрит' })).winner).toBe(1);
+    expect((await previewRules(host, list, { ...base, text: 'скок ей лет' })).winner).toBeNull();
+  });
+
 });
 
 describe('previewRules', () => {

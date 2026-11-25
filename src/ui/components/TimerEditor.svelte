@@ -77,11 +77,14 @@
   });
   const me = $derived(cfg.channels[0] ?? '');
 
+  // noword in a plugin older than 0.10.0 would be rejected on load
+  const nowordBlocked = $derived(!features.noword && conditions.some((c) => c.type === 'noword'));
+
   async function runChecks(): Promise<boolean> {
     const [all, errs] = await Promise.all([analyseTimers(lua, listWithDraft, me), Promise.all(conditions.map((c) => checkCondition(lua, c.type, c.match)))]);
     analysis = all.get(focusId) ?? null;
     condErrors = errs;
-    return !analysis?.replyError && !analysis?.nameError && errs.every((e) => e === null);
+    return !analysis?.replyError && !analysis?.nameError && !analysis?.conditionError && !nowordBlocked && errs.every((e) => e === null);
   }
 
   $effect(() => {
@@ -127,6 +130,7 @@
 
   const gated = (ok: boolean) => !ok;
   const needVersion = (v: string) => (features.versionKnown ? ru.notice.needsPlugin(v) : R.unknownVersion);
+  const setError = $derived(condErrors.every((e) => e === null) ? (nowordBlocked ? needVersion('0.10.0') : seen(analysis?.conditionError)) : undefined);
   const categoryLabel = { reset: T.catReset, stop: T.catStop, off: T.catOff } as Record<string, string>;
 </script>
 
@@ -142,7 +146,7 @@
 
     <ChannelSelect {uid} bind:channel channels={cfg.channels} label={T.channel} help={T.channelHelp} none={T.channelNone} missing={T.channelMissing} error={channelError} />
 
-    <ConditionsEditor {uid} bind:conditions errors={condErrors.map((e) => seen(e) ?? null)} />
+    <ConditionsEditor {uid} bind:conditions errors={condErrors.map((e) => seen(e) ?? null)} nowordOk={features.noword} nowordNote={needVersion('0.10.0')} {setError} />
 
     <ReplyField {uid} bind:reply error={seen(analysis?.replyError)} inserts={['{time}', '{user}']} help={T.replyHelp} />
 
